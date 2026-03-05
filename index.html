@@ -63,7 +63,8 @@ const map = new mapboxgl.Map({
 });
 
 map.on('load', () => {
-        map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 1);
+    map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 1);
+    map.setPaintProperty('gpi-bw2pfx', 'fill-opacity', 1);
     map.setConfigProperty('basemap', 'lightPreset', 'day');
 
     function updateMap() {
