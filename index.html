@@ -84,8 +84,12 @@ function updateMap() {
             ],
             ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
         ],
-        0, '#267300', 50, '#ffff00', 150, '#ffaa00', 300, '#ff0000'
-    ]);
+0, '#267300',   // Deep Green
+20, '#a6d96a',  // Light Green (added for more "Safe" area)
+80, '#ffff00',  // Pure Yellow
+180, '#ffaa00', // Orange
+300, '#ff0000'  // Critical Red
+]);
     
     // VISUAL LAYER VISIBILITY
     map.setLayoutProperty('aggregate-1ojs0p', 'visibility', 
