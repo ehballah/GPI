@@ -47,7 +47,7 @@
 </div>
 
 <script>
-mapboxgl.accessToken = 'pk.eyJ1IjoiZWhiYWxsYWgiLCJhIjoiY2pzbTZ6aGxtMXF6djN5cW8xeGx4amIxMCJ9.rChQa9g11Riv3B82ulJrYw';
+mapboxgl.accessToken = 'pk.eyJ1IjoiZWhiYWxsYWgiLCJhIjoiY2toYXJhaGZvMTVrZjJwazE4enkzeHEyOCJ9.nhAjZ0tSdwM-rwf57dsgaQ';
 
 const popup = new mapboxgl.Popup({
     closeButton: false,
@@ -63,81 +63,68 @@ const map = new mapboxgl.Map({
 });
 
 map.on('load', () => {
-    map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 1);
-    map.setPaintProperty('gpi-bw2pfx', 'fill-opacity', 1);
-    map.setConfigProperty('basemap', 'lightPreset', 'day');
 
     function updateMap() {
-        const mAgg = document.getElementById('calc-agg').checked ? 1 : 0;
-        const mSept = document.getElementById('calc-sept').checked ? 1 : 0;
-        const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
-        const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
+    const mAgg = document.getElementById('calc-agg').checked ? 1 : 0;
+    const mSept = document.getElementById('calc-sept').checked ? 1 : 0;
+    const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
+    const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
 
-        map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
-            'interpolate', ['linear'],
+    map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
+        'interpolate', ['linear'],
+        ['*', 
             ['*', 
-                ['*', 
-                    ['+', 
-                        ['*', ['coalesce', ['get', 'risk_aggre'], 0], mAgg], 
-                        ['*', ['coalesce', ['get', 'risk_undel'], 0], mSept],
-                        ['*', ['coalesce', ['get', 'risk_delin'], 0], mUrb]
-                    ], 
-                    ['coalesce', ['get', 'sens_weigh'], 0]
-                ],
-                ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
+                ['+', 
+                    ['*', ['coalesce', ['get', 'risk_aggre'], 0], mAgg], 
+                    ['*', ['coalesce', ['get', 'risk_undel'], 0], mSept],
+                    // Force 'risk_delin' to be treated as a number
+                    ['*', ['to-number', ['get', 'risk_delin'], 0], mUrb]
+                ], 
+                ['coalesce', ['get', 'sens_weigh'], 0]
             ],
-            0, '#267300', 
-            30, '#a6d96a', 
-            75, '#ffff00', 
-            150, '#ffcc00', 
-            250, '#ffaa00', 
-            350, '#ff0000'
-        ]);
-        
-        map.setLayoutProperty('aggregate-1ojs0p', 'visibility', 
-            document.getElementById('show-agg').checked ? 'visible' : 'none');
-        map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', 
-            document.getElementById('show-bua-del').checked ? 'visible' : 'none');
-        map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', 
-            document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
-    }
+            ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
+        ],
+        0, '#267300', 30, '#a6d96a', 75, '#ffff00', 150, '#ffcc00', 250, '#ffaa00', 350, '#ff0000'
+    ]);
+
+    // RESTORE OVERLAY TOGGLES
+    map.setLayoutProperty('aggregate-1ojs0p', 'visibility', document.getElementById('show-agg').checked ? 'visible' : 'none');
+    map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', document.getElementById('show-bua-del').checked ? 'visible' : 'none');
+    map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
+}
 
     map.on('mousemove', 'gpi-bw2pfx', (e) => {
-        map.getCanvas().style.cursor = 'pointer';
-        if (e.features.length > 0) {
-            const f = e.features[0].properties;
-            
-            // Group active risk factors
-            let risks = [];
-            if (f.risk_aggre > 0) risks.push('Aggregate Extraction');
-            if (f.risk_undel > 0) risks.push('Rural/Septic Pressure');
-            if (f.risk_delin > 0) risks.push('Urban Pressure');
-            const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
+    map.getCanvas().style.cursor = 'pointer';
+    if (e.features.length > 0) {
+        const f = e.features[0].properties;
+        
+        // Logical check for combined HVA/SGRA
+        const hvaSgra = (f.HVA_norm || 0) > 0 ? f.HVA_norm : ((f.SGRA_norm || 0) > 0 ? f.SGRA_norm : 0);
+        // Ensure WHPA is treated as a number for the popup
+        const whpa = Number(f.WHPA_vulner) || 0;
 
-            // Combined HVA/SGRA as requested
-            const hvaSgraValue = (f.HVA_norm || 0) > 0 ? f.HVA_norm : ((f.SGRA_norm || 0) > 0 ? f.SGRA_norm : 0);
-
-            const content = `
-                <div style="padding:10px; min-width:200px; font-family:sans-serif;">
-                    <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
-                    <div style="font-size:11px; margin-top:4px; color:#555;">• ${riskList}</div>
-                    
-                    <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
-                    
-                    <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
-                    <div style="font-size:11px; margin-top:4px; color:#555;">
-                        • HVA/SGRA: ${hvaSgraValue}<br>
-                        • WHPA: ${f.WHPA_vulner || '0'}
-                    </div>
-                    
-                    <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
-                        2051 Growth: +${((f.pop_gro_51 || 0) * 100).toFixed(1)}%
-                    </div>
+        const content = `
+            <div style="padding:10px; min-width:200px; font-family:sans-serif;">
+                <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
+                <div style="font-size:11px; margin-top:4px; color:#555;">
+                    • Aggregate: ${f.risk_aggre || 0}<br>
+                    • Rural/Septic: ${f.risk_undel || 0}<br>
+                    • Urban: ${f.risk_delin || 0}
                 </div>
-            `;
-            popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
-        }
-    });
+                <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+                <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
+                <div style="font-size:11px; margin-top:4px; color:#555;">
+                    • HVA/SGRA: ${hvaSgra}<br>
+                    • WHPA: ${whpa}
+                </div>
+                <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
+                    2051 Growth: +${((f.pop_gro_51 || 0) * 100).toFixed(1)}%
+                </div>
+            </div>
+        `;
+        popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+    }
+});
 
     map.on('mouseleave', 'gpi-bw2pfx', () => {
         map.getCanvas().style.cursor = '';
