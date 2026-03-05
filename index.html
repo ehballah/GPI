@@ -91,7 +91,7 @@ map.on('load', () => {
             350, '#ff0000'
         ]);
 
-        // RESTORE OVERLAY TOGGLES - Ensured visibility based on checkbox status
+        // OVERLAY TOGGLES
         map.setLayoutProperty('aggregate-1ojs0p', 'visibility', document.getElementById('show-agg').checked ? 'visible' : 'none');
         map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', document.getElementById('show-bua-del').checked ? 'visible' : 'none');
         map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
@@ -99,6 +99,8 @@ map.on('load', () => {
         // Ensure colors remain flat and professional by overriding 3D lighting
         map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 1);
     }
+
+    map.setConfigProperty('basemap', 'lightPreset', 'day'); // Forces a flat, bright light
 
     map.on('mousemove', 'gpi-bw2pfx', (e) => {
         map.getCanvas().style.cursor = 'pointer';
