@@ -70,26 +70,29 @@ map.on('load', () => {
     const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
     const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
 
-    // Corrected to-color syntax to stop the console crash
+    // Fixed math stops to match your 6-stop balanced scale
     map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
-        'to-color', 
-        ['interpolate', ['linear'],
+        'interpolate', ['linear'],
+        ['*', 
             ['*', 
-                ['*', 
-                    ['+', 
-                        ['*', ['coalesce', ['get', 'risk_aggre'], 0], mAgg], 
-                        ['*', ['coalesce', ['get', 'risk_undel'], 0], mSept],
-                        ['*', ['coalesce', ['get', 'risk_delin'], 0], mUrb]
-                    ], 
-                    ['coalesce', ['get', 'sens_weigh'], 0]
-                ],
-                ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
+                ['+', 
+                    ['*', ['coalesce', ['get', 'risk_aggre'], 0], mAgg], 
+                    ['*', ['coalesce', ['get', 'risk_undel'], 0], mSept],
+                    ['*', ['coalesce', ['get', 'risk_delin'], 0], mUrb]
+                ], 
+                ['coalesce', ['get', 'sens_weigh'], 0]
             ],
-            0, '#267300', 30, '#a6d96a', 75, '#ffff00', 150, '#ffcc00', 250, '#ffaa00', 350, '#ff0000'
-        ]
+            ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
+        ],
+        0, '#267300',   // Deep Green
+        30, '#a6d96a',  // Light Green
+        75, '#ffff00',  // Yellow
+        150, '#ffcc00', // Light Orange
+        250, '#ffaa00', // Deep Orange
+        350, '#ff0000'  // Red
     ]);
 
-    // Fixed Toggle IDs from your Studio Screenshot
+    // Force visibility to match checkboxes
     map.setLayoutProperty('aggregate-1ojs0p', 'visibility', 
         document.getElementById('show-agg').checked ? 'visible' : 'none');
     map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', 
@@ -97,25 +100,26 @@ map.on('load', () => {
     map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', 
         document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
 
+    // Remove 3D wash-out effect
     map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 0);
 }
 
-    // UPDATED TOOLTIP: Displays HVA, SGRA, and WHPA values
+    // TOOLTIP: Displays HVA, SGRA, and WHPA values
     map.on('mousemove', 'gpi-bw2pfx', (e) => {
     map.getCanvas().style.cursor = 'pointer';
     if (e.features.length > 0) {
         const f = e.features[0].properties;
         
-        // Logical check for the combined HVA/SGRA value
-        const hvaSgra = f.HVA_norm > 0 ? f.HVA_norm : (f.SGRA_norm > 0 ? f.SGRA_norm : 0);
+        // Logical check to combine the mutually exclusive values
+        const hvaSgraValue = f.HVA_norm > 0 ? f.HVA_norm : (f.SGRA_norm > 0 ? f.SGRA_norm : 0);
 
         const content = `
             <div style="padding:10px; min-width:180px; font-family:sans-serif;">
-                <strong style="color:#2c3e50;">${f.primary_th || 'Infrastructure Pressure'}</strong>
+                <strong style="font-size:14px; color:#2c3e50;">${f.primary_th || 'Infrastructure Pressure'}</strong>
                 <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
                 <div style="font-size:11px; line-height:1.6; color:#555;">
                     <strong>Vulnerability Drivers:</strong><br>
-                    • HVA/SGRA: ${hvaSgra}<br>
+                    • HVA/SGRA: ${hvaSgraValue}<br>
                     • WHPA: ${f.WHPA_vulner || '0'}<br>
                     <br>
                     <strong>2051 Growth:</strong> +${(f.pop_gro_51 * 100).toFixed(1)}%
