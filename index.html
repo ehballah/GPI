@@ -97,7 +97,7 @@ map.on('load', () => {
         map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
 
         // Ensure colors remain flat and professional by overriding 3D lighting
-        map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 0);
+        map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 1);
     }
 
     map.on('mousemove', 'gpi-bw2pfx', (e) => {
