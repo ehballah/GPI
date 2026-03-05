@@ -29,16 +29,16 @@
 <div id="map"></div>
 
 <div class="console">
-    <h2>Groundwater Risk 2051</h2>
-    <p class="subtitle">Simcoe County Greenbelt Coalition</p>
+    <h2>Groundwater Pressure Index<h2>
+    <p class="subtitle">Simcoe County</p>
     
-    <h3>1. Model Weighting (Math)</h3>
+    <h3>Risk Weighting</h3>
     <label><input type="checkbox" id="calc-agg" checked> Aggregate Extraction (Weight: 10)</label>
     <label><input type="checkbox" id="calc-sept" checked> Rural/Septic BUA (Weight: 5)</label>
     <label><input type="checkbox" id="calc-urb" checked> Urban Delineated BUA (Weight: 2)</label>
     <label><input type="checkbox" id="calc-growth" checked> Population Growth Multiplier</label>
 
-    <h3>2. Map Overlays (Visual)</h3>
+    <h3>2. Visual Overlays</h3>
     <label><input type="checkbox" id="show-agg"> Show Aggregate Site Polygons</label>
     <label><input type="checkbox" id="show-bua-del"> Show Delineated Urban Areas</label>
     <label><input type="checkbox" id="show-bua-undel"> Show Rural Undelineated Areas</label>
@@ -86,7 +86,7 @@ map.on('load', () => {
             document.getElementById('show-agg').checked ? 'visible' : 'none');
         map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', 
             document.getElementById('show-bua-del').checked ? 'visible' : 'none');
-        map.setLayoutProperty('undelineated-bua-8slqlm', 'visibility', 
+        map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', 
             document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
     }
 
