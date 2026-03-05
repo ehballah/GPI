@@ -64,37 +64,37 @@ const map = new mapboxgl.Map({
 });
 
 map.on('load', () => {
-    function updateMap() {
-        const mAgg = document.getElementById('calc-agg').checked ? 1 : 0;
-        const mSept = document.getElementById('calc-sept').checked ? 1 : 0;
-        const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
-        const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
+function updateMap() {
+    const mAgg = document.getElementById('calc-agg').checked ? 1 : 0;
+    const mSept = document.getElementById('calc-sept').checked ? 1 : 0;
+    const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
+    const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
 
-        // Apply the dynamic calculation to the hex grid
-        map.setPaintProperty('gpi-final-ak647b', 'fill-color', [
-            'interpolate', ['linear'],
+    map.setPaintProperty('gpi-final-ak647b', 'fill-color', [
+        'interpolate', ['linear'],
+        ['*', 
             ['*', 
-                ['*', 
-                    ['+', 
-                        ['*', ['get', 'risk_aggregate'], mAgg], 
-                        ['*', ['get', 'risk_undelineated'], mSept],
-                        ['*', ['get', 'risk_delineated'], mUrb]
-                    ], 
-                    ['get', 'sens_weigh']
-                ],
-                ['+', 1, ['*', ['get', 'pop_gro_51'], mGrowth]]
+                ['+', 
+                    // UPDATED FIELD NAMES FROM SCREENSHOT
+                    ['*', ['coalesce', ['get', 'risk_aggre'], 0], mAgg], 
+                    ['*', ['coalesce', ['get', 'risk_undel'], 0], mSept],
+                    ['*', ['coalesce', ['get', 'risk_delin'], 0], mUrb]
+                ], 
+                ['coalesce', ['get', 'sens_weigh'], 0]
             ],
-            0, '#267300', 50, '#ffff00', 150, '#ffaa00', 300, '#ff0000'
-        ]);
-
-        // Toggle visibility for visual confirmation layers
-        map.setLayoutProperty('aggregate-1ojs0p', 'visibility', 
-            document.getElementById('show-agg').checked ? 'visible' : 'none');
-        map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', 
-            document.getElementById('show-bua-del').checked ? 'visible' : 'none');
-        map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', 
-            document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
-    }
+            ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
+        ],
+        0, '#267300', 50, '#ffff00', 150, '#ffaa00', 300, '#ff0000'
+    ]);
+    
+    // VISUAL LAYER VISIBILITY
+    map.setLayoutProperty('aggregate-1ojs0p', 'visibility', 
+        document.getElementById('show-agg').checked ? 'visible' : 'none');
+    map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', 
+        document.getElementById('show-bua-del').checked ? 'visible' : 'none');
+    map.setLayoutProperty('undelineated-bua-8slqlm', 'visibility', 
+        document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
+}
 
     // Tooltip functionality (Mouse Follow)
     map.on('mousemove', 'gpi-final-ak647b', (e) => {
