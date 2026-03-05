@@ -101,41 +101,29 @@ map.on('load', () => {
     }
 
     map.on('mousemove', 'gpi-bw2pfx', (e) => {
-        map.getCanvas().style.cursor = 'pointer';
-        if (e.features.length > 0) {
-            const f = e.features[0].properties;
-            
-            // Group active risk factors
-            let risks = [];
-            if (f.risk_aggre > 0) risks.push('Aggregate Extraction');
-            if (f.risk_undel > 0) risks.push('Rural/Septic Pressure');
-            if (f.risk_delin > 0) risks.push('Urban Pressure');
-            const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
+    map.getCanvas().style.cursor = 'pointer';
+    if (e.features.length > 0) {
+        const f = e.features[0].properties;
+        
+        // Logical check to combine the mutually exclusive values
+        const hvaSgraValue = f.HVA_norm > 0 ? f.HVA_norm : (f.SGRA_norm > 0 ? f.SGRA_norm : 0);
 
-            // Combined HVA/SGRA as requested
-            const hvaSgraValue = (f.HVA_norm || 0) > 0 ? f.HVA_norm : ((f.SGRA_norm || 0) > 0 ? f.SGRA_norm : 0);
-
-            const content = `
-                <div style="padding:10px; min-width:200px; font-family:sans-serif;">
-                    <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
-                    <div style="font-size:11px; margin-top:4px; color:#555;">• ${riskList}</div>
-                    
-                    <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
-                    
-                    <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
-                    <div style="font-size:11px; margin-top:4px; color:#555;">
-                        • HVA/SGRA: ${hvaSgraValue}<br>
-                        • WHPA: ${f.WHPA_vulner || '0'}
-                    </div>
-                    
-                    <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
-                        2051 Growth: +${((f.pop_gro_51 || 0) * 100).toFixed(1)}%
-                    </div>
+        const content = `
+            <div style="padding:10px; min-width:180px; font-family:sans-serif;">
+                <strong style="font-size:14px; color:#2c3e50;">${f.primary_th || 'Infrastructure Pressure'}</strong>
+                <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
+                <div style="font-size:11px; line-height:1.6; color:#555;">
+                    <strong>Vulnerability Drivers:</strong><br>
+                    • HVA/SGRA: ${hvaSgraValue}<br>
+                    • WHPA: ${f.WHPA_vulner || '0'}<br>
+                    <br>
+                    <strong>2051 Growth:</strong> +${(f.pop_gro_51 * 100).toFixed(1)}%
                 </div>
-            `;
-            popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
-        }
-    });
+            </div>
+        `;
+        popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+    }
+});
 
     map.on('mouseleave', 'gpi-bw2pfx', () => {
         map.getCanvas().style.cursor = '';
