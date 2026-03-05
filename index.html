@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Simcoe County Groundwater Risk Index 2051</title>
+<title>Simcoe County Groundwater Pressure Index 2051</title>
 <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.js"></script>
@@ -21,7 +21,6 @@
     input[type="checkbox"] { margin-right: 10px; }
     .legend-scale { display: flex; justify-content: space-between; margin-top: 15px; height: 12px; 
                    background: linear-gradient(to right, #267300, #ffff00, #ffaa00, #ff0000); border-radius: 2px; }
-    #popup-data { margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc; font-size: 12px; line-height: 1.4; }
 </style>
 </head>
 <body>
@@ -29,7 +28,7 @@
 <div id="map"></div>
 
 <div class="console">
-    <h2>Groundwater Pressure Index<h2>
+    <h2>Groundwater Pressure Index</h2>
     <p class="subtitle">Simcoe County</p>
     
     <h3>Risk Weighting</h3>
@@ -44,11 +43,18 @@
     <label><input type="checkbox" id="show-bua-undel"> Show Rural Undelineated Areas</label>
 
     <div class="legend-scale"></div>
-    <div id="popup-data">Hover over a hexagon for details.</div>
+    <p style="font-size: 10px; color: #999; margin-top: 5px;">Low Risk &larr; &rarr; High Risk</p>
 </div>
 
 <script>
-mapboxgl.accessToken = 'pk.eyJ1IjoiZWhiYWxsYWgiLCJhIjoiY2toYXJhaGZvMTVrZjJwazE4enkzeHEyOCJ9.nhAjZ0tSdwM-rwf57dsgaQ';
+mapboxgl.accessToken = 'pk.eyJ1IjoiZWhiYWxsYWgiLCJhIjoiY2pzbTZ6aGxtMXF6djN5cW8xeGx4amIxMCJ9.rChQa9g11Riv3B82ulJrYw';
+
+// Define the popup instance BEFORE the map loads
+const popup = new mapboxgl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    offset: 15
+});
 
 const map = new mapboxgl.Map({
     container: 'map',
@@ -64,7 +70,7 @@ map.on('load', () => {
         const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
         const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
 
-        // DYNAMIC CALCULATION USING LAYER ID: gpi-final-ak647b
+        // Apply the dynamic calculation to the hex grid
         map.setPaintProperty('gpi-final-ak647b', 'fill-color', [
             'interpolate', ['linear'],
             ['*', 
@@ -81,7 +87,7 @@ map.on('load', () => {
             0, '#267300', 50, '#ffff00', 150, '#ffaa00', 300, '#ff0000'
         ]);
 
-        // VISUAL LAYER VISIBILITY USING LAYER IDs
+        // Toggle visibility for visual confirmation layers
         map.setLayoutProperty('aggregate-1ojs0p', 'visibility', 
             document.getElementById('show-agg').checked ? 'visible' : 'none');
         map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', 
@@ -90,22 +96,39 @@ map.on('load', () => {
             document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
     }
 
-    // Hover Listener for the Hex Grid
+    // Tooltip functionality (Mouse Follow)
     map.on('mousemove', 'gpi-final-ak647b', (e) => {
+        map.getCanvas().style.cursor = 'pointer';
+
         if (e.features.length > 0) {
             const f = e.features[0].properties;
-            document.getElementById('popup-data').innerHTML = `
-                <strong>Threat: ${f.primary_th || 'General Pressure'}</strong><br>
-                Sensitivity Score: ${f.sens_weigh}<br>
-                Growth Factor: +${(f.pop_gro_51 * 100).toFixed(1)}%
+            const content = `
+                <div style="padding:5px; font-family:sans-serif;">
+                    <strong style="color:#2c3e50;">${f.primary_th || 'General Pressure'}</strong><br>
+                    <span style="font-size:11px; color:#7f8c8d;">
+                        Sensitivity: ${f.sens_weigh}<br>
+                        2051 Growth: +${(f.pop_gro_51 * 100).toFixed(1)}%
+                    </span>
+                </div>
             `;
+
+            popup.setLngLat(e.lngLat)
+                .setHTML(content)
+                .addTo(map);
         }
     });
 
+    map.on('mouseleave', 'gpi-final-ak647b', () => {
+        map.getCanvas().style.cursor = '';
+        popup.remove();
+    });
+
+    // Listen for checkbox changes
     document.querySelectorAll('input').forEach(input => {
         input.addEventListener('change', updateMap);
     });
 
+    // Initial run to set the map state
     updateMap();
 });
 </script>
