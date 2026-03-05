@@ -49,7 +49,6 @@
 <script>
 mapboxgl.accessToken = 'pk.eyJ1IjoiZWhiYWxsYWgiLCJhIjoiY2toYXJhaGZvMTVrZjJwazE4enkzeHEyOCJ9.nhAjZ0tSdwM-rwf57dsgaQ';
 
-// Define the popup instance BEFORE the map loads
 const popup = new mapboxgl.Popup({
     closeButton: false,
     closeOnClick: false,
@@ -65,73 +64,78 @@ const map = new mapboxgl.Map({
 
 map.on('load', () => {
     function updateMap() {
-    const mAgg = document.getElementById('calc-agg').checked ? 1 : 0;
-    const mSept = document.getElementById('calc-sept').checked ? 1 : 0;
-    const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
-    const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
+        const mAgg = document.getElementById('calc-agg').checked ? 1 : 0;
+        const mSept = document.getElementById('calc-sept').checked ? 1 : 0;
+        const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
+        const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
 
-    // FIXED: Removed 'to-color' to stop the "Type string is not interpolatable" error
-    map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
-        'interpolate', ['linear'],
-        ['*', 
+        // FIXED: The math expression must use standard linear interpolation without per-stop to-color
+        map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
+            'interpolate', ['linear'],
             ['*', 
-                ['+', 
-                    ['*', ['coalesce', ['get', 'risk_aggre'], 0], mAgg], 
-                    ['*', ['coalesce', ['get', 'risk_undel'], 0], mSept],
-                    ['*', ['coalesce', ['get', 'risk_delin'], 0], mUrb]
-                ], 
-                ['coalesce', ['get', 'sens_weigh'], 0]
+                ['*', 
+                    ['+', 
+                        ['*', ['coalesce', ['get', 'risk_aggre'], 0], mAgg], 
+                        ['*', ['coalesce', ['get', 'risk_undel'], 0], mSept],
+                        ['*', ['coalesce', ['get', 'risk_delin'], 0], mUrb]
+                    ], 
+                    ['coalesce', ['get', 'sens_weigh'], 0]
+                ],
+                ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
             ],
-            ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
-        ],
-        0, '#267300', 30, '#a6d96a', 75, '#ffff00', 150, '#ffcc00', 250, '#ffaa00', 350, '#ff0000'
-    ]);
+            0, '#267300', 
+            30, '#a6d96a', 
+            75, '#ffff00', 
+            150, '#ffcc00', 
+            250, '#ffaa00', 
+            350, '#ff0000'
+        ]);
 
-    // Fixing toggles by ensuring the script reaches these lines
-    map.setLayoutProperty('aggregate-1ojs0p', 'visibility', document.getElementById('show-agg').checked ? 'visible' : 'none');
-    map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', document.getElementById('show-bua-del').checked ? 'visible' : 'none');
-    map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
+        // RESTORE OVERLAY TOGGLES - Ensured visibility based on checkbox status
+        map.setLayoutProperty('aggregate-1ojs0p', 'visibility', document.getElementById('show-agg').checked ? 'visible' : 'none');
+        map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', document.getElementById('show-bua-del').checked ? 'visible' : 'none');
+        map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
 
-    map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 0);
-}
-
-    // TOOLTIP: Displays HVA, SGRA, and WHPA values
-    map.on('mousemove', 'gpi-bw2pfx', (e) => {
-    map.getCanvas().style.cursor = 'pointer';
-    if (e.features.length > 0) {
-        const f = e.features[0].properties;
-        
-        // 1. Identify active risk factors for the tooltip list
-        let risks = [];
-        if (f.risk_aggre > 0) risks.push('Aggregate Extraction');
-        if (f.risk_undel > 0) risks.push('Rural/Septic Pressure');
-        if (f.risk_delin > 0) risks.push('Urban Pressure');
-        const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
-
-        // 2. Combine HVA/SGRA
-        const hvaSgraValue = f.HVA_norm > 0 ? f.HVA_norm : (f.SGRA_norm > 0 ? f.SGRA_norm : 0);
-
-        const content = `
-            <div style="padding:10px; min-width:200px; font-family:sans-serif;">
-                <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
-                <div style="font-size:11px; margin-top:4px; color:#555;">• ${riskList}</div>
-                
-                <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
-                
-                <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
-                <div style="font-size:11px; margin-top:4px; color:#555;">
-                    • HVA/SGRA: ${hvaSgraValue}<br>
-                    • WHPA: ${f.WHPA_vulner || '0'}
-                </div>
-                
-                <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
-                    2051 Growth: +${(f.pop_gro_51 * 100).toFixed(1)}%
-                </div>
-            </div>
-        `;
-        popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+        // Ensure colors remain flat and professional by overriding 3D lighting
+        map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 0);
     }
-});
+
+    map.on('mousemove', 'gpi-bw2pfx', (e) => {
+        map.getCanvas().style.cursor = 'pointer';
+        if (e.features.length > 0) {
+            const f = e.features[0].properties;
+            
+            // Group active risk factors
+            let risks = [];
+            if (f.risk_aggre > 0) risks.push('Aggregate Extraction');
+            if (f.risk_undel > 0) risks.push('Rural/Septic Pressure');
+            if (f.risk_delin > 0) risks.push('Urban Pressure');
+            const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
+
+            // Combined HVA/SGRA as requested
+            const hvaSgraValue = (f.HVA_norm || 0) > 0 ? f.HVA_norm : ((f.SGRA_norm || 0) > 0 ? f.SGRA_norm : 0);
+
+            const content = `
+                <div style="padding:10px; min-width:200px; font-family:sans-serif;">
+                    <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
+                    <div style="font-size:11px; margin-top:4px; color:#555;">• ${riskList}</div>
+                    
+                    <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+                    
+                    <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
+                    <div style="font-size:11px; margin-top:4px; color:#555;">
+                        • HVA/SGRA: ${hvaSgraValue}<br>
+                        • WHPA: ${f.WHPA_vulner || '0'}
+                    </div>
+                    
+                    <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
+                        2051 Growth: +${((f.pop_gro_51 || 0) * 100).toFixed(1)}%
+                    </div>
+                </div>
+            `;
+            popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+        }
+    });
 
     map.on('mouseleave', 'gpi-bw2pfx', () => {
         map.getCanvas().style.cursor = '';
