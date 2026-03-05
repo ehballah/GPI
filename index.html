@@ -70,7 +70,7 @@ function updateMap() {
     const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
     const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
 
-    map.setPaintProperty('gpi-final-ak647b', 'fill-color', [
+    map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
         'to-color',
     ['interpolate',
     ['linear'],
@@ -86,14 +86,15 @@ function updateMap() {
         ],
         ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
     ],
-    0, '#267300',   // Deep Green (Safe)
-    25, '#a6d96a',  // Light Green
-    75, '#ffff00',  // Yellow (Moderate)
-    150, '#ffaa00', // Orange (High)
-    300, '#ff0000'  // Red (Critical)
+        0, '#267300',   // Deep Green
+        30, '#a6d96a',  // Light Green
+        75, '#ffff00',  // Yellow
+        150, '#ffcc00', // Light Orange
+        250, '#ffaa00', // Deep Orange
+        350, '#ff0000'  // Red
      ]
 ]);
-    map.setPaintProperty('gpi-final-ak647b', 'fill-emissive-strength', 1);
+    map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 0);
     
     // VISUAL LAYER VISIBILITY
     map.setLayoutProperty('aggregate-1ojs0p', 'visibility', 
@@ -105,28 +106,33 @@ function updateMap() {
 }
 
     // Tooltip functionality (Mouse Follow)
-    map.on('mousemove', 'gpi-final-ak647b', (e) => {
-        map.getCanvas().style.cursor = 'pointer';
+map.on('mousemove', 'gpi-bw2pfx', (e) => {
+    map.getCanvas().style.cursor = 'pointer';
 
-        if (e.features.length > 0) {
-            const f = e.features[0].properties;
-            const content = `
-                <div style="padding:5px; font-family:sans-serif;">
-                    <strong style="color:#2c3e50;">${f.primary_th || 'General Pressure'}</strong><br>
-                    <span style="font-size:11px; color:#7f8c8d;">
-                        Sensitivity: ${f.sens_weigh}<br>
-                        2051 Growth: +${(f.pop_gro_51 * 100).toFixed(1)}%
-                    </span>
+    if (e.features.length > 0) {
+        const f = e.features[0].properties;
+        
+        // Build a clean, vertical list of the scientific drivers
+        const content = `
+            <div style="padding:10px; min-width:180px;">
+                <strong style="font-size:14px; color:#2c3e50;">${f.primary_th || 'Groundwater Pressure'}</strong>
+                <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
+                <div style="font-size:11px; line-height:1.6;">
+                    <strong>Vulnerability Factors:</strong><br>
+                    • HVA: ${f.HVA_norm || '0'}<br>
+                    • SGRA: ${f.SGRA_norm || '0'}<br>
+                    • WHPA: ${f.WHPA_vulner || '0'}<br>
+                    <br>
+                    <strong>2051 Growth Booster:</strong> +${(f.pop_gro_51 * 100).toFixed(1)}%
                 </div>
-            `;
+            </div>
+        `;
 
-            popup.setLngLat(e.lngLat)
-                .setHTML(content)
-                .addTo(map);
-        }
-    });
+        popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+    }
+});
 
-    map.on('mouseleave', 'gpi-final-ak647b', () => {
+    map.on('mouseleave', 'gpi-bw2pfx', () => {
         map.getCanvas().style.cursor = '';
         popup.remove();
     });
