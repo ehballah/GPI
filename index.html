@@ -40,7 +40,7 @@
     <h3>2. Visual Overlays</h3>
     <label><input type="checkbox" id="show-agg"> Show Aggregate Site Polygons</label>
     <label><input type="checkbox" id="show-bua-del"> Show Delineated Urban Areas</label>
-    <label><input type="checkbox" id="show-bua-undel"> Show Rural Undelineated Areas</label>
+    <label><input type="checkbox" id="show-bua-undel"> Show Undelineated Areas</label>
 
     <div class="legend-scale"></div>
     <p style="font-size: 10px; color: #999; margin-top: 5px;">Low Risk &larr; &rarr; High Risk</p>
@@ -70,7 +70,7 @@ map.on('load', () => {
     const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
     const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
 
-    // Fixed math stops to match your 6-stop balanced scale
+    // FIXED: Removed 'to-color' to stop the "Type string is not interpolatable" error
     map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
         'interpolate', ['linear'],
         ['*', 
@@ -84,23 +84,14 @@ map.on('load', () => {
             ],
             ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
         ],
-        0, '#267300',   // Deep Green
-        30, '#a6d96a',  // Light Green
-        75, '#ffff00',  // Yellow
-        150, '#ffcc00', // Light Orange
-        250, '#ffaa00', // Deep Orange
-        350, '#ff0000'  // Red
+        0, '#267300', 30, '#a6d96a', 75, '#ffff00', 150, '#ffcc00', 250, '#ffaa00', 350, '#ff0000'
     ]);
 
-    // Force visibility to match checkboxes
-    map.setLayoutProperty('aggregate-1ojs0p', 'visibility', 
-        document.getElementById('show-agg').checked ? 'visible' : 'none');
-    map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', 
-        document.getElementById('show-bua-del').checked ? 'visible' : 'none');
-    map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', 
-        document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
+    // Fixing toggles by ensuring the script reaches these lines
+    map.setLayoutProperty('aggregate-1ojs0p', 'visibility', document.getElementById('show-agg').checked ? 'visible' : 'none');
+    map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', document.getElementById('show-bua-del').checked ? 'visible' : 'none');
+    map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
 
-    // Remove 3D wash-out effect
     map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 0);
 }
 
@@ -110,19 +101,31 @@ map.on('load', () => {
     if (e.features.length > 0) {
         const f = e.features[0].properties;
         
-        // Logical check to combine the mutually exclusive values
+        // 1. Identify active risk factors for the tooltip list
+        let risks = [];
+        if (f.risk_aggre > 0) risks.push('Aggregate Extraction');
+        if (f.risk_undel > 0) risks.push('Rural/Septic Pressure');
+        if (f.risk_delin > 0) risks.push('Urban Pressure');
+        const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
+
+        // 2. Combine HVA/SGRA
         const hvaSgraValue = f.HVA_norm > 0 ? f.HVA_norm : (f.SGRA_norm > 0 ? f.SGRA_norm : 0);
 
         const content = `
-            <div style="padding:10px; min-width:180px; font-family:sans-serif;">
-                <strong style="font-size:14px; color:#2c3e50;">${f.primary_th || 'Infrastructure Pressure'}</strong>
-                <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
-                <div style="font-size:11px; line-height:1.6; color:#555;">
-                    <strong>Vulnerability Drivers:</strong><br>
+            <div style="padding:10px; min-width:200px; font-family:sans-serif;">
+                <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
+                <div style="font-size:11px; margin-top:4px; color:#555;">• ${riskList}</div>
+                
+                <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+                
+                <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
+                <div style="font-size:11px; margin-top:4px; color:#555;">
                     • HVA/SGRA: ${hvaSgraValue}<br>
-                    • WHPA: ${f.WHPA_vulner || '0'}<br>
-                    <br>
-                    <strong>2051 Growth:</strong> +${(f.pop_gro_51 * 100).toFixed(1)}%
+                    • WHPA: ${f.WHPA_vulner || '0'}
+                </div>
+                
+                <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
+                    2051 Growth: +${(f.pop_gro_51 * 100).toFixed(1)}%
                 </div>
             </div>
         `;
