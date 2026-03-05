@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Simcoe County Groundwater Risk Index 2051</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.js"></script>
+<style>
+    body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    .console {
+        position: absolute; width: 320px; margin: 20px; padding: 15px 25px;
+        background-color: rgba(255, 255, 255, 0.95); border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1;
+    }
+    h2 { font-size: 18px; margin-bottom: 5px; color: #2c3e50; }
+    p.subtitle { font-size: 11px; color: #7f8c8d; margin-bottom: 15px; }
+    h3 { font-size: 13px; margin-top: 20px; color: #34495e; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    label { display: flex; align-items: center; margin: 10px 0; cursor: pointer; font-size: 13px; color: #2c3e50; }
+    input[type="checkbox"] { margin-right: 10px; }
+    .legend-scale { display: flex; justify-content: space-between; margin-top: 15px; height: 12px; 
+                   background: linear-gradient(to right, #267300, #ffff00, #ffaa00, #ff0000); border-radius: 2px; }
+    #popup-data { margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc; font-size: 12px; line-height: 1.4; }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="console">
+    <h2>Groundwater Risk 2051</h2>
+    <p class="subtitle">Simcoe County Greenbelt Coalition</p>
+    
+    <h3>1. Model Weighting (Math)</h3>
+    <label><input type="checkbox" id="calc-agg" checked> Aggregate Extraction (Weight: 10)</label>
+    <label><input type="checkbox" id="calc-sept" checked> Rural/Septic BUA (Weight: 5)</label>
+    <label><input type="checkbox" id="calc-urb" checked> Urban Delineated BUA (Weight: 2)</label>
+    <label><input type="checkbox" id="calc-growth" checked> Population Growth Multiplier</label>
+
+    <h3>2. Map Overlays (Visual)</h3>
+    <label><input type="checkbox" id="show-agg"> Show Aggregate Site Polygons</label>
+    <label><input type="checkbox" id="show-bua-del"> Show Delineated Urban Areas</label>
+    <label><input type="checkbox" id="show-bua-undel"> Show Rural Undelineated Areas</label>
+
+    <div class="legend-scale"></div>
+    <div id="popup-data">Hover over a hexagon for details.</div>
+</div>
+
+<script>
+mapboxgl.accessToken = 'pk.eyJ1IjoiZWhiYWxsYWgiLCJhIjoiY2toYXJhaGZvMTVrZjJwazE4enkzeHEyOCJ9.nhAjZ0tSdwM-rwf57dsgaQ';
+
+const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/ehballah/cmmdmmbh6001201s3b3wi6oeo',
+    center: [-79.7, 44.5], 
+    zoom: 9
+});
+
+map.on('load', () => {
+    function updateMap() {
+        const mAgg = document.getElementById('calc-agg').checked ? 1 : 0;
+        const mSept = document.getElementById('calc-sept').checked ? 1 : 0;
+        const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
+        const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
+
+        // DYNAMIC CALCULATION USING LAYER ID: gpi-final-ak647b
+        map.setPaintProperty('gpi-final-ak647b', 'fill-color', [
+            'interpolate', ['linear'],
+            ['*', 
+                ['*', 
+                    ['+', 
+                        ['*', ['get', 'risk_aggregate'], mAgg], 
+                        ['*', ['get', 'risk_undelineated'], mSept],
+                        ['*', ['get', 'risk_delineated'], mUrb]
+                    ], 
+                    ['get', 'sens_weigh']
+                ],
+                ['+', 1, ['*', ['get', 'pop_gro_51'], mGrowth]]
+            ],
+            0, '#267300', 50, '#ffff00', 150, '#ffaa00', 300, '#ff0000'
+        ]);
+
+        // VISUAL LAYER VISIBILITY USING LAYER IDs
+        map.setLayoutProperty('aggregate-1ojs0p', 'visibility', 
+            document.getElementById('show-agg').checked ? 'visible' : 'none');
+        map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', 
+            document.getElementById('show-bua-del').checked ? 'visible' : 'none');
+        map.setLayoutProperty('undelineated-bua-8slqlm', 'visibility', 
+            document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
+    }
+
+    // Hover Listener for the Hex Grid
+    map.on('mousemove', 'gpi-final-ak647b', (e) => {
+        if (e.features.length > 0) {
+            const f = e.features[0].properties;
+            document.getElementById('popup-data').innerHTML = `
+                <strong>Threat: ${f.primary_th || 'General Pressure'}</strong><br>
+                Sensitivity Score: ${f.sens_weigh}<br>
+                Growth Factor: +${(f.pop_gro_51 * 100).toFixed(1)}%
+            `;
+        }
+    });
+
+    document.querySelectorAll('input').forEach(input => {
+        input.addEventListener('change', updateMap);
+    });
+
+    updateMap();
+});
+</script>
+</body>
+</html>
