@@ -71,7 +71,8 @@ function updateMap() {
     const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
 
     map.setPaintProperty('gpi-final-ak647b', 'fill-color', [
-    'interpolate',
+        'to-color',
+    ['interpolate',
     ['linear'],
     // This formula must result in the same scale as your Studio 'Data Range'
     ['*', 
@@ -90,8 +91,9 @@ function updateMap() {
     75, '#ffff00',  // Yellow (Moderate)
     150, '#ffaa00', // Orange (High)
     300, '#ff0000'  // Red (Critical)
+     ]
 ]);
-    map.setPaintProperty('gpi-final-ak647b', 'fill-emissive-strength', 0);
+    map.setPaintProperty('gpi-final-ak647b', 'fill-emissive-strength', 1);
     
     // VISUAL LAYER VISIBILITY
     map.setLayoutProperty('aggregate-1ojs0p', 'visibility', 
