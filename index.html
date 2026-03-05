@@ -63,35 +63,43 @@ const map = new mapboxgl.Map({
 });
 
 map.on('load', () => {
-    map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 1);
+        map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 1);
     map.setConfigProperty('basemap', 'lightPreset', 'day');
+
     function updateMap() {
-    const mAgg = document.getElementById('calc-agg').checked ? 1 : 0;
-    const mSept = document.getElementById('calc-sept').checked ? 1 : 0;
-    const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
-    const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
+        const mAgg = document.getElementById('calc-agg').checked ? 1 : 0;
+        const mSept = document.getElementById('calc-sept').checked ? 1 : 0;
+        const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
+        const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
 
-    map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
-        'interpolate', ['linear'],
-        ['*', 
+        map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
+            'interpolate', ['linear'],
             ['*', 
-                ['+', 
-                    ['*', ['coalesce', ['get', 'risk_aggre'], 0], mAgg], 
-                    ['*', ['coalesce', ['get', 'risk_undel'], 0], mSept],
-                    ['*', ['coalesce', ['get', 'risk_delin'], 0], mUrb]
-                ], 
-                ['coalesce', ['get', 'sens_weigh'], 0]
+                ['*', 
+                    ['+', 
+                        ['*', ['coalesce', ['get', 'risk_aggre'], 0], mAgg], 
+                        ['*', ['coalesce', ['get', 'risk_undel'], 0], mSept],
+                        ['*', ['coalesce', ['get', 'risk_delin'], 0], mUrb]
+                    ], 
+                    ['coalesce', ['get', 'sens_weigh'], 0]
+                ],
+                ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
             ],
-            ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
-        ],
-        0, '#267300', 30, '#a6d96a', 75, '#ffff00', 150, '#ffcc00', 250, '#ffaa00', 350, '#ff0000'
-    ]);
-
-    // Force visibility to match checkboxes
-    map.setLayoutProperty('aggregate-1ojs0p', 'visibility', document.getElementById('show-agg').checked ? 'visible' : 'none');
-    map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', document.getElementById('show-bua-del').checked ? 'visible' : 'none');
-    map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
-}
+            0, '#267300', 
+            30, '#a6d96a', 
+            75, '#ffff00', 
+            150, '#ffcc00', 
+            250, '#ffaa00', 
+            350, '#ff0000'
+        ]);
+        
+        map.setLayoutProperty('aggregate-1ojs0p', 'visibility', 
+            document.getElementById('show-agg').checked ? 'visible' : 'none');
+        map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', 
+            document.getElementById('show-bua-del').checked ? 'visible' : 'none');
+        map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', 
+            document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
+    }
 
     map.on('mousemove', 'gpi-bw2pfx', (e) => {
         map.getCanvas().style.cursor = 'pointer';
