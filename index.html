@@ -14,6 +14,14 @@
         background-color: rgba(255, 255, 255, 0.95); border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1;
     }
+    .console-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .console-header h2 { margin: 0 0 5px 0; }
+    #collapse-btn {
+        background: none; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;
+        font-size: 16px; color: #7f8c8d; padding: 2px 8px; line-height: 1; flex-shrink: 0;
+    }
+    #collapse-btn:hover { background: #f0f0f0; color: #2c3e50; }
+    .console-body.collapsed { display: none; }
     h2 { font-size: 18px; margin-bottom: 5px; color: #2c3e50; }
     p.subtitle { font-size: 11px; color: #7f8c8d; margin-bottom: 15px; }
     h3 { font-size: 13px; margin-top: 20px; color: #34495e; border-bottom: 1px solid #eee; padding-bottom: 5px; }
@@ -28,23 +36,29 @@
 <div id="map"></div>
 
 <div class="console">
-    <h2>Groundwater Pressure Index</h2>
-    <p class="subtitle">Simcoe County</p>
-    
-    <h3>Risk Weighting</h3>
-    <label><input type="checkbox" id="calc-agg" checked> Aggregate Extraction (Weight: 10)</label>
-    <label><input type="checkbox" id="calc-sept" checked> Rural/Septic BUA (Weight: 5)</label>
-    <label><input type="checkbox" id="calc-urb" checked> Urban Delineated BUA (Weight: 2)</label>
-    <label><input type="checkbox" id="calc-orn" checked> Ontario Road Network (Weight: 2)</label>
-    <label><input type="checkbox" id="calc-growth" checked> Population Growth Multiplier</label>
+    <div class="console-header">
+        <div>
+            <h2>Groundwater Pressure Index</h2>
+            <p class="subtitle">Simcoe County</p>
+        </div>
+        <button id="collapse-btn" title="Collapse panel">&#9650;</button>
+    </div>
+    <div id="console-body">
+        <h3>Risk Weighting</h3>
+        <label><input type="checkbox" id="calc-agg" checked> Aggregate Extraction (Weight: 10)</label>
+        <label><input type="checkbox" id="calc-sept" checked> Rural/Septic BUA (Weight: 5)</label>
+        <label><input type="checkbox" id="calc-urb" checked> Urban Delineated BUA (Weight: 2)</label>
+        <label><input type="checkbox" id="calc-orn" checked> Ontario Road Network (Weight: 2)</label>
+        <label><input type="checkbox" id="calc-growth" checked> Population Growth Multiplier</label>
 
-    <h3>2. Visual Overlays</h3>
-    <label><input type="checkbox" id="show-agg"> Show Aggregate Site Polygons</label>
-    <label><input type="checkbox" id="show-bua-del"> Show Delineated Urban Areas</label>
-    <label><input type="checkbox" id="show-bua-undel"> Show Undelineated Areas</label>
+        <h3>Visual Overlays</h3>
+        <label><input type="checkbox" id="show-agg"> Show Aggregate Site Polygons</label>
+        <label><input type="checkbox" id="show-bua-del"> Show Delineated Urban Areas</label>
+        <label><input type="checkbox" id="show-bua-undel"> Show Undelineated Areas</label>
 
-    <div class="legend-scale"></div>
-    <p style="font-size: 10px; color: #999; margin-top: 5px;">Low Risk &larr; &rarr; High Risk</p>
+        <div class="legend-scale"></div>
+        <p style="font-size: 10px; color: #999; margin-top: 5px;">Low Risk &larr; &rarr; High Risk</p>
+    </div>
 </div>
 
 <script>
@@ -79,9 +93,6 @@ map.on('load', () => {
     // Set emissive strength + full opacity on the new layer
     map.setPaintProperty('gpi-3-3ev0l1', 'fill-emissive-strength', 1);
     map.setPaintProperty('gpi-3-3ev0l1', 'fill-opacity', 1);
-
-    // Debug: log all style layers so you can verify the layer ID is correct
-    console.log('Style layers:', map.getStyle().layers.map(l => l.id));
 
     // GPI_Final_ = (risk_ORN + risk_urb_i + risk_aggre + risk_undel) * sens_weigh * (1 + pop_gro_51)
     function updateMap() {
@@ -146,7 +157,7 @@ map.on('load', () => {
             if (Number(f.risk_undel) > 0) risks.push('Rural/Septic Pressure');
             if (Number(f.risk_urb_i) > 0) risks.push('Urban Pressure');
             if (Number(f.risk_ORN) > 0)   risks.push('Infrastructure Pressure');
-            const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
+            const riskList = risks.length > 0 ? risks.join('<br>• ') : 'Baseline Pressure';
 
             const hvaSgra = (Number(f.HVA_norm) || 0) > 0
                 ? f.HVA_norm
@@ -178,6 +189,14 @@ map.on('load', () => {
 
     document.querySelectorAll('input').forEach(i => i.addEventListener('change', updateMap));
     updateMap();
+
+    document.getElementById('collapse-btn').addEventListener('click', () => {
+        const body = document.getElementById('console-body');
+        const btn = document.getElementById('collapse-btn');
+        body.classList.toggle('collapsed');
+        btn.innerHTML = body.classList.contains('collapsed') ? '&#9660;' : '&#9650;';
+        btn.title = body.classList.contains('collapsed') ? 'Expand panel' : 'Collapse panel';
+    });
 });
 </script>
 </body>
