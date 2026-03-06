@@ -68,64 +68,67 @@ map.on('load', () => {
     map.setConfigProperty('basemap', 'showAmbientOcclusion', false);
 
     function updateMap() {
-        const mAgg = document.getElementById('calc-agg').checked ? 1 : 0;
-        const mSept = document.getElementById('calc-sept').checked ? 1 : 0;
-        const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
-        const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
+    const mAgg = document.getElementById('calc-agg').checked ? 1 : 0;
+    const mSept = document.getElementById('calc-sept').checked ? 1 : 0;
+    const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
+    const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
 
-        map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
-            'interpolate', ['linear'],
+    // This specific syntax is the "Nuclear Option" to bypass all String/Mixed errors
+    map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
+        'interpolate', ['linear'],
+        ['*', 
             ['*', 
-                ['*', 
-                    ['+', 
-                        ['*', ['to-number', ['get', 'risk_aggre'], 0], mAgg], 
-                        ['*', ['to-number', ['get', 'risk_undel'], 0], mSept],
-                        ['*', ['to-number', ['get', 'risk_delin'], 0], mUrb]
-                    ], 
-                    ['to-number', ['get', 'sens_weigh'], 0]
-                ],
-                ['+', 1, ['*', ['to-number', ['get', 'pop_gro_51'], 0], mGrowth]]
+                ['+', 
+                    ['*', ['to-number', ['get', 'risk_aggre'], 0], mAgg], 
+                    ['*', ['to-number', ['get', 'risk_undel'], 0], mSept],
+                    ['*', ['to-number', ['get', 'risk_urb_i'], 0], mUrb]
+                ], 
+                ['to-number', ['get', 'sens_weigh'], 0]
             ],
-            0, '#267300', 30, '#a6d96a', 75, '#ffff00', 150, '#ffcc00', 250, '#ffaa00', 350, '#ff0000'
-        ]);
+            ['+', 1, ['*', ['to-number', ['get', 'pop_gro_51'], 0], mGrowth]]
+        ],
+        0, '#267300', 30, '#a6d96a', 75, '#ffff00', 150, '#ffcc00', 250, '#ffaa00', 350, '#ff0000'
+    ]);
 
-        // Toggle visibility
-        map.setLayoutProperty('aggregate-1ojs0p', 'visibility', document.getElementById('show-agg').checked ? 'visible' : 'none');
-        map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', document.getElementById('show-bua-del').checked ? 'visible' : 'none');
-        map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
-    }
+    // These will finally work because the math above won't crash the script anymore
+    map.setLayoutProperty('aggregate-1ojs0p', 'visibility', document.getElementById('show-agg').checked ? 'visible' : 'none');
+    map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', document.getElementById('show-bua-del').checked ? 'visible' : 'none');
+    map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
+}
 
-    map.on('mousemove', 'gpi-bw2pfx', (e) => {
-        map.getCanvas().style.cursor = 'pointer';
-        if (e.features.length > 0) {
-            const f = e.features[0].properties;
-            
-            let risks = [];
-            if (Number(f.risk_aggre) > 0) risks.push('Aggregate Extraction');
-            if (Number(f.risk_undel) > 0) risks.push('Rural/Septic Pressure');
-            if (Number(f.risk_delin) > 0) risks.push('Urban Pressure');
-            const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
+map.on('mousemove', 'gpi-bw2pfx', (e) => {
+    map.getCanvas().style.cursor = 'pointer';
+    if (e.features.length > 0) {
+        const f = e.features[0].properties;
+        
+        // Logical check for the Primary Risk Factors grouping
+        let risks = [];
+        if (Number(f.risk_aggre) > 0) risks.push('Aggregate Extraction');
+        if (Number(f.risk_undel) > 0) risks.push('Rural/Septic Pressure');
+        if (Number(f.risk_urb_i) > 0) risks.push('Urban Pressure');
+        const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
 
-            const hvaSgra = (Number(f.HVA_norm) || 0) > 0 ? f.HVA_norm : ((Number(f.SGRA_norm) || 0) > 0 ? f.SGRA_norm : 0);
+        // Combined HVA/SGRA line
+        const hvaSgra = (Number(f.HVA_norm) || 0) > 0 ? f.HVA_norm : ((Number(f.SGRA_norm) || 0) > 0 ? f.SGRA_norm : 0);
 
-            const content = `
-                <div style="padding:10px; min-width:200px; font-family:sans-serif;">
-                    <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
-                    <div style="font-size:11px; margin-top:4px; color:#555;">• ${riskList}</div>
-                    <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
-                    <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
-                    <div style="font-size:11px; margin-top:4px; color:#555;">
-                        • HVA/SGRA: ${hvaSgra}<br>
-                        • WHPA: ${Number(f.WHPA_vulner) || '0'}
-                    </div>
-                    <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
-                        2051 Growth: +${((Number(f.pop_gro_51) || 0) * 100).toFixed(1)}%
-                    </div>
+        const content = `
+            <div style="padding:10px; min-width:200px; font-family:sans-serif;">
+                <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
+                <div style="font-size:11px; margin-top:4px; color:#555;">• ${riskList}</div>
+                <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+                <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
+                <div style="font-size:11px; margin-top:4px; color:#555;">
+                    • HVA/SGRA: ${hvaSgra}<br>
+                    • WHPA: ${Number(f.whpa_i) || '0'}
                 </div>
-            `;
-            popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
-        }
-    });
+                <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
+                    2051 Growth: +${((Number(f.pop_gro_51) || 0) * 100).toFixed(1)}%
+                </div>
+            </div>
+        `;
+        popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+    }
+});
 
     map.on('mouseleave', 'gpi-bw2pfx', () => {
         map.getCanvas().style.cursor = '';
