@@ -72,8 +72,12 @@ map.on('load', () => {
     map.setConfigProperty('basemap', 'showAmbientOcclusion', false);
     map.setConfigProperty('basemap', 'showGroundShadows', false);
 
-    // Set emissive strength on the correct layer so colours stay vivid
+    // Hide old layer so it doesn't cover or compete with the new one
+    map.setLayoutProperty('gpi-bw2pfx', 'visibility', 'none');
+
+    // Set emissive strength + full opacity on the new layer
     map.setPaintProperty('gpi-3-3ev0l1', 'fill-emissive-strength', 1);
+    map.setPaintProperty('gpi-3-3ev0l1', 'fill-opacity', 1);
 
     // Debug: log all style layers so you can verify the layer ID is correct
     console.log('Style layers:', map.getStyle().layers.map(l => l.id));
