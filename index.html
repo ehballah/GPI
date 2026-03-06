@@ -78,14 +78,15 @@ map.on('load', () => {
     const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
     const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
 
-    // Use your verified integer fields to prevent crashes
-    map.setPaintProperty('GPI-3-layer-id', 'fill-color', [
+    // Corrected Layer ID: gpi-3-3ev0l1
+    map.setPaintProperty('gpi-3-3ev0l1', 'fill-color', [
         'interpolate', ['linear'],
         ['*', 
             ['*', 
                 ['+', 
                     ['*', ['coalesce', ['get', 'risk_aggre'], 0], mAgg], 
                     ['*', ['coalesce', ['get', 'risk_undel'], 0], mSept],
+                    // Using your verified integer field to stop the "Mixed Type" crash
                     ['*', ['coalesce', ['get', 'risk_urb_i'], 0], mUrb]
                 ], 
                 ['coalesce', ['get', 'sens_weigh'], 0]
@@ -95,28 +96,25 @@ map.on('load', () => {
         0, '#267300', 30, '#a6d96a', 75, '#ffff00', 150, '#ffcc00', 250, '#ffaa00', 350, '#ff0000'
     ]);
 
-    // This property is the "Shield" that prevents the dark green shift
-    map.setPaintProperty('GPI-3-layer-id', 'fill-emissive-strength', 1.0);
-
-    // Toggles for visual overlays
+    // Fixing overlay toggles
     map.setLayoutProperty('aggregate-1ojs0p', 'visibility', document.getElementById('show-agg').checked ? 'visible' : 'none');
     map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', document.getElementById('show-bua-del').checked ? 'visible' : 'none');
     map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
 }
 
-    map.on('mousemove', 'GPI-3-layer-id', (e) => {
+    map.on('mousemove', 'gpi-3-3ev0l1', (e) => {
     map.getCanvas().style.cursor = 'pointer';
     if (e.features.length > 0) {
         const f = e.features[0].properties;
         
-        // Group active risk factors
+        // Grouping logic for the Simcoe County advocacy layout
         let risks = [];
         if (f.risk_aggre > 0) risks.push('Aggregate Extraction');
         if (f.risk_undel > 0) risks.push('Rural/Septic Pressure');
         if (f.risk_urb_i > 0) risks.push('Urban Pressure');
         const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
 
-        // Combined HVA/SGRA value
+        // Combined HVA/SGRA display line
         const hvaSgra = f.HVA_norm > 0 ? f.HVA_norm : (f.SGRA_norm > 0 ? f.SGRA_norm : 0);
 
         const content = `
@@ -138,10 +136,10 @@ map.on('load', () => {
     }
 });
 
-    map.on('mouseleave', 'gpi-bw2pfx', () => {
-        map.getCanvas().style.cursor = '';
-        popup.remove();
-    });
+map.on('mouseleave', 'gpi-3-3ev0l1', () => {
+    map.getCanvas().style.cursor = '';
+    popup.remove();
+});
 
     document.querySelectorAll('input').forEach(i => i.addEventListener('change', updateMap));
     updateMap();
