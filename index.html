@@ -35,6 +35,7 @@
     <label><input type="checkbox" id="calc-agg" checked> Aggregate Extraction (Weight: 10)</label>
     <label><input type="checkbox" id="calc-sept" checked> Rural/Septic BUA (Weight: 5)</label>
     <label><input type="checkbox" id="calc-urb" checked> Urban Delineated BUA (Weight: 2)</label>
+    <label><input type="checkbox" id="calc-orn" checked> Ontario Road Network (Weight: 2)</label>
     <label><input type="checkbox" id="calc-growth" checked> Population Growth Multiplier</label>
 
     <h3>2. Visual Overlays</h3>
@@ -82,17 +83,32 @@ map.on('load', () => {
     // Debug: log all style layers so you can verify the layer ID is correct
     console.log('Style layers:', map.getStyle().layers.map(l => l.id));
 
+    // GPI_Final_ = (risk_ORN + risk_urb_i + risk_aggre + risk_undel) * sens_weigh * (1 + pop_gro_51)
     function updateMap() {
-        const mAgg    = document.getElementById('calc-agg').checked    ? 1 : 0;
-        const mSept   = document.getElementById('calc-sept').checked   ? 1 : 0;
-        const mUrb    = document.getElementById('calc-urb').checked    ? 1 : 0;
-        const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
+        const allAgg    = document.getElementById('calc-agg').checked;
+        const allSept   = document.getElementById('calc-sept').checked;
+        const allUrb    = document.getElementById('calc-urb').checked;
+        const allOrn    = document.getElementById('calc-orn').checked;
+        const allGrowth = document.getElementById('calc-growth').checked;
+        const allOn     = allAgg && allSept && allUrb && allOrn && allGrowth;
 
-        map.setPaintProperty('gpi-3-3ev0l1', 'fill-color', [
-            'interpolate', ['linear'],
-            ['*',
+        // When all toggles are on, use the pre-computed GPI_Final_ directly
+        // so colours match Mapbox Studio exactly.
+        // When a toggle is off, recalculate from components.
+        let valueExpr;
+        if (allOn) {
+            valueExpr = num('GPI_Final_');
+        } else {
+            const mAgg    = allAgg    ? 1 : 0;
+            const mSept   = allSept   ? 1 : 0;
+            const mUrb    = allUrb    ? 1 : 0;
+            const mOrn    = allOrn    ? 1 : 0;
+            const mGrowth = allGrowth ? 1 : 0;
+            valueExpr = [
+                '*',
                 ['*',
                     ['+',
+                        ['*', num('risk_ORN'), mOrn],
                         ['*', num('risk_aggre'), mAgg],
                         ['*', num('risk_undel'), mSept],
                         ['*', num('risk_urb_i'), mUrb]
@@ -100,7 +116,12 @@ map.on('load', () => {
                     num('sens_weigh')
                 ],
                 ['+', 1, ['*', num('pop_gro_51'), mGrowth]]
-            ],
+            ];
+        }
+
+        map.setPaintProperty('gpi-3-3ev0l1', 'fill-color', [
+            'interpolate', ['linear'],
+            valueExpr,
             0,   '#267300',
             15,  '#6ab023',
             30,  '#a6d96a',
@@ -124,6 +145,7 @@ map.on('load', () => {
             if (Number(f.risk_aggre) > 0) risks.push('Aggregate Extraction');
             if (Number(f.risk_undel) > 0) risks.push('Rural/Septic Pressure');
             if (Number(f.risk_urb_i) > 0) risks.push('Urban Pressure');
+            if (Number(f.risk_ORN) > 0)   risks.push('Infrastructure Pressure');
             const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
 
             const hvaSgra = (Number(f.HVA_norm) || 0) > 0
