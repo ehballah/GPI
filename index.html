@@ -63,84 +63,92 @@ const map = new mapboxgl.Map({
 });
 
 map.on('load', () => {
+    // Helper: robust numeric getter for mixed-type tileset fields.
+    // Wraps coalesce → to-number to handle null, string, and absent values.
+    const num = (field) => ['coalesce', ['to-number', ['get', field]], 0];
 
-    map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 1);
-
-    // Fix 2: Lock in flat day lighting before first render
+    // Flat day lighting so 3D shadows don't wash out fill colours
     map.setConfigProperty('basemap', 'lightPreset', 'day');
     map.setConfigProperty('basemap', 'showAmbientOcclusion', false);
     map.setConfigProperty('basemap', 'showGroundShadows', false);
 
+    // Set emissive strength on the correct layer so colours stay vivid
+    map.setPaintProperty('gpi-3-3ev0l1', 'fill-emissive-strength', 1);
+
+    // Debug: log all style layers so you can verify the layer ID is correct
+    console.log('Style layers:', map.getStyle().layers.map(l => l.id));
+
     function updateMap() {
-    const mAgg = document.getElementById('calc-agg').checked ? 1 : 0;
-    const mSept = document.getElementById('calc-sept').checked ? 1 : 0;
-    const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
-    const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
+        const mAgg    = document.getElementById('calc-agg').checked    ? 1 : 0;
+        const mSept   = document.getElementById('calc-sept').checked   ? 1 : 0;
+        const mUrb    = document.getElementById('calc-urb').checked    ? 1 : 0;
+        const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
 
-map.setPaintProperty('gpi-3-3ev0l1', 'fill-color', [
-    'interpolate', ['linear'],
-    ['*', 
-        ['*', 
-            ['+', 
-                ['*', ['to-number', ['get', 'risk_aggre'], 0], mAgg], 
-                ['*', ['to-number', ['get', 'risk_undel'], 0], mSept],
-                ['*', ['to-number', ['get', 'risk_urb_i'], 0], mUrb]
-            ], 
-            ['to-number', ['get', 'sens_weigh'], 0]
-        ],
-        ['+', 1, ['*', ['to-number', ['get', 'pop_gro_51'], 0], mGrowth]]
-    ],
-    0, '#267300',   // 0: Deepest Green (Baseline)
-    15, '#6ab023',  // 15: NEW Mid-Green (Nuance anchor)
-    30, '#a6d96a',  // 30: Light Green
-    75, '#ffff00',  // 75: Yellow
-    150, '#ffcc00', // 150: Light Orange
-    250, '#ffaa00', // 250: Deep Orange
-    350, '#ff0000'  // 350: Red
-]);
+        map.setPaintProperty('gpi-3-3ev0l1', 'fill-color', [
+            'interpolate', ['linear'],
+            ['*',
+                ['*',
+                    ['+',
+                        ['*', num('risk_aggre'), mAgg],
+                        ['*', num('risk_undel'), mSept],
+                        ['*', num('risk_urb_i'), mUrb]
+                    ],
+                    num('sens_weigh')
+                ],
+                ['+', 1, ['*', num('pop_gro_51'), mGrowth]]
+            ],
+            0,   '#267300',
+            15,  '#6ab023',
+            30,  '#a6d96a',
+            75,  '#ffff00',
+            150, '#ffcc00',
+            250, '#ffaa00',
+            350, '#ff0000'
+        ]);
 
-    // Overlay toggles
-    map.setLayoutProperty('aggregate-1ojs0p', 'visibility', document.getElementById('show-agg').checked ? 'visible' : 'none');
-    map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', document.getElementById('show-bua-del').checked ? 'visible' : 'none');
-    map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
-}
-
-map.on('mousemove', 'gpi-3-3ev0l1', (e) => {
-    map.getCanvas().style.cursor = 'pointer';
-    if (e.features.length > 0) {
-        const f = e.features[0].properties;
-        
-        let risks = [];
-        if (Number(f.risk_aggre) > 0) risks.push('Aggregate Extraction');
-        if (Number(f.risk_undel) > 0) risks.push('Rural/Septic Pressure');
-        if (Number(f.risk_urb_i) > 0) risks.push('Urban Pressure');
-        const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
-
-        const hvaSgra = (Number(f.HVA_norm) || 0) > 0 ? f.HVA_norm : ((Number(f.SGRA_norm) || 0) > 0 ? f.SGRA_norm : 0);
-
-        const content = `
-            <div style="padding:10px; min-width:200px; font-family:sans-serif;">
-                <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
-                <div style="font-size:11px; margin-top:4px; color:#555;">• ${riskList}</div>
-                <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
-                <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
-                <div style="font-size:11px; margin-top:4px; color:#555;">
-                    • HVA/SGRA: ${hvaSgra}<br>
-                    • WHPA: ${Number(f.whpa_i) || '0'}
-                </div>
-                <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
-                    2051 Growth: +${((Number(f.pop_gro_51) || 0) * 100).toFixed(1)}%
-                </div>
-            </div>
-        `;
-        popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+        map.setLayoutProperty('aggregate-1ojs0p',        'visibility', document.getElementById('show-agg').checked      ? 'visible' : 'none');
+        map.setLayoutProperty('delineated-bua-5ddhwr',   'visibility', document.getElementById('show-bua-del').checked  ? 'visible' : 'none');
+        map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
     }
-});
 
-map.on('mouseleave', 'gpi-3-3ev0l1', () => {
-    map.getCanvas().style.cursor = '';
-    popup.remove();
-});
+    map.on('mousemove', 'gpi-3-3ev0l1', (e) => {
+        map.getCanvas().style.cursor = 'pointer';
+        if (e.features.length > 0) {
+            const f = e.features[0].properties;
+
+            let risks = [];
+            if (Number(f.risk_aggre) > 0) risks.push('Aggregate Extraction');
+            if (Number(f.risk_undel) > 0) risks.push('Rural/Septic Pressure');
+            if (Number(f.risk_urb_i) > 0) risks.push('Urban Pressure');
+            const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
+
+            const hvaSgra = (Number(f.HVA_norm) || 0) > 0
+                ? f.HVA_norm
+                : ((Number(f.SGRA_norm) || 0) > 0 ? f.SGRA_norm : 0);
+
+            const content = `
+                <div style="padding:10px; min-width:200px; font-family:sans-serif;">
+                    <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
+                    <div style="font-size:11px; margin-top:4px; color:#555;">• ${riskList}</div>
+                    <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+                    <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
+                    <div style="font-size:11px; margin-top:4px; color:#555;">
+                        • HVA/SGRA: ${hvaSgra}<br>
+                        • WHPA: ${Number(f.whpa_i) || 0}
+                    </div>
+                    <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
+                        2051 Growth: +${((Number(f.pop_gro_51) || 0) * 100).toFixed(1)}%
+                    </div>
+                </div>
+            `;
+            popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+        }
+    });
+
+    map.on('mouseleave', 'gpi-3-3ev0l1', () => {
+        map.getCanvas().style.cursor = '';
+        popup.remove();
+    });
 
     document.querySelectorAll('input').forEach(i => i.addEventListener('change', updateMap));
     updateMap();
