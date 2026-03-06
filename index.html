@@ -21,6 +21,8 @@
     input[type="checkbox"] { margin-right: 10px; }
     .legend-scale { display: flex; justify-content: space-between; margin-top: 15px; height: 12px; 
                    background: linear-gradient(to right, #267300, #ffff00, #ffaa00, #ff0000); border-radius: 2px; }
+    button#reset-view { width: 100%; margin-top: 20px; padding: 10px; cursor: pointer; background: #2c3e50; color: white; border: none; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    button#reset-view:hover { background: #34495e; }
 </style>
 </head>
 <body>
@@ -44,6 +46,8 @@
 
     <div class="legend-scale"></div>
     <p style="font-size: 10px; color: #999; margin-top: 5px;">Low Risk &larr; &rarr; High Risk</p>
+    
+    <button id="reset-view">Reset to Simcoe County</button>
 </div>
 
 <script>
@@ -63,69 +67,85 @@ const map = new mapboxgl.Map({
 });
 
 map.on('load', () => {
-    map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
-    'interpolate', ['linear'],
-    ['*', 
-        ['*', 
-            ['+', 
-                ['*', ['coalesce', ['get', 'risk_aggre'], 0], mAgg], 
-                ['*', ['coalesce', ['get', 'risk_undel'], 0], mSept],
-                // Wrap strings in 'to-number' to fix the crash
-                ['*', ['to-number', ['get', 'risk_delin'], 0], mUrb]
-            ], 
-            ['coalesce', ['get', 'sens_weigh'], 0]
-        ],
-        ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
-    ],
-    0, '#267300', 30, '#a6d96a', 75, '#ffff00', 150, '#ffcc00', 250, '#ffaa00', 350, '#ff0000'
-]);
+    // Kill the 3D shadows and Ambient Occlusion
+    map.setConfigProperty('basemap', 'lightPreset', 'day');
+    map.setConfigProperty('basemap', 'showAmbientOcclusion', false);
 
-    // OVERLAY TOGGLES
-    map.setLayoutProperty('aggregate-1ojs0p', 'visibility', document.getElementById('show-agg').checked ? 'visible' : 'none');
-    map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', document.getElementById('show-bua-del').checked ? 'visible' : 'none');
-    map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
-}
+    function updateMap() {
+        const mAgg = document.getElementById('calc-agg').checked ? 1 : 0;
+        const mSept = document.getElementById('calc-sept').checked ? 1 : 0;
+        const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
+        const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
+
+        map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
+            'interpolate', ['linear'],
+            ['*', 
+                ['*', 
+                    ['+', 
+                        ['*', ['coalesce', ['get', 'risk_aggre'], 0], mAgg], 
+                        ['*', ['coalesce', ['get', 'risk_undel'], 0], mSept],
+                        // Fixed: Wrapped the 'risk_delin' string field in to-number
+                        ['*', ['to-number', ['get', 'risk_delin'], 0], mUrb]
+                    ], 
+                    ['coalesce', ['get', 'sens_weigh'], 0]
+                ],
+                ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
+            ],
+            0, '#267300', 30, '#a6d96a', 75, '#ffff00', 150, '#ffcc00', 250, '#ffaa00', 350, '#ff0000'
+        ]);
+
+        // Toggle visibility for visual overlays
+        map.setLayoutProperty('aggregate-1ojs0p', 'visibility', document.getElementById('show-agg').checked ? 'visible' : 'none');
+        map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', document.getElementById('show-bua-del').checked ? 'visible' : 'none');
+        map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
+    }
 
     map.on('mousemove', 'gpi-bw2pfx', (e) => {
-    map.getCanvas().style.cursor = 'pointer';
-    if (e.features.length > 0) {
-        const f = e.features[0].properties;
-        
-        // Logical check for combined HVA/SGRA
-        const hvaSgra = (f.HVA_norm || 0) > 0 ? f.HVA_norm : ((f.SGRA_norm || 0) > 0 ? f.SGRA_norm : 0);
-        // Ensure WHPA is treated as a number for the popup
-        const whpa = Number(f.WHPA_vulner) || 0;
+        map.getCanvas().style.cursor = 'pointer';
+        if (e.features.length > 0) {
+            const f = e.features[0].properties;
+            
+            let risks = [];
+            if (f.risk_aggre > 0) risks.push('Aggregate Extraction');
+            if (f.risk_undel > 0) risks.push('Rural/Septic Pressure');
+            if (Number(f.risk_delin) > 0) risks.push('Urban Pressure');
+            const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
 
-        const content = `
-            <div style="padding:10px; min-width:200px; font-family:sans-serif;">
-                <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
-                <div style="font-size:11px; margin-top:4px; color:#555;">
-                    • Aggregate: ${f.risk_aggre || 0}<br>
-                    • Rural/Septic: ${f.risk_undel || 0}<br>
-                    • Urban: ${f.risk_delin || 0}
+            const hvaSgra = (f.HVA_norm || 0) > 0 ? f.HVA_norm : ((f.SGRA_norm || 0) > 0 ? f.SGRA_norm : 0);
+            const whpa = Number(f.WHPA_vulner) || 0;
+
+            const content = `
+                <div style="padding:10px; min-width:200px; font-family:sans-serif;">
+                    <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
+                    <div style="font-size:11px; margin-top:4px; color:#555;">• ${riskList}</div>
+                    <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+                    <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
+                    <div style="font-size:11px; margin-top:4px; color:#555;">
+                        • HVA/SGRA: ${hvaSgra}<br>
+                        • WHPA: ${whpa}
+                    </div>
+                    <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
+                        2051 Growth: +${((f.pop_gro_51 || 0) * 100).toFixed(1)}%
+                    </div>
                 </div>
-                <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
-                <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
-                <div style="font-size:11px; margin-top:4px; color:#555;">
-                    • HVA/SGRA: ${hvaSgra}<br>
-                    • WHPA: ${whpa}
-                </div>
-                <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
-                    2051 Growth: +${((f.pop_gro_51 || 0) * 100).toFixed(1)}%
-                </div>
-            </div>
-        `;
-        popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
-    }
-});
+            `;
+            popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+        }
+    });
 
     map.on('mouseleave', 'gpi-bw2pfx', () => {
         map.getCanvas().style.cursor = '';
         popup.remove();
     });
 
+    // Add listeners for checkboxes and run initial update
     document.querySelectorAll('input').forEach(i => i.addEventListener('change', updateMap));
     updateMap();
+});
+
+// Reset view listener
+document.getElementById('reset-view').addEventListener('click', () => {
+    map.flyTo({ center: [-79.7, 44.5], zoom: 9, essential: true });
 });
 </script>
 </body>
