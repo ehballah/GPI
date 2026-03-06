@@ -63,7 +63,7 @@ const map = new mapboxgl.Map({
 });
 
 map.on('load', () => {
-    // Force the 3D map engine to stay bright/flat
+    // Force a flat, bright light to ignore Mapbox 3D ambient occlusion
     map.setConfigProperty('basemap', 'lightPreset', 'day');
     map.setConfigProperty('basemap', 'showAmbientOcclusion', false);
 
@@ -78,14 +78,13 @@ map.on('load', () => {
             ['*', 
                 ['*', 
                     ['+', 
-                        ['*', ['coalesce', ['get', 'risk_aggre'], 0], mAgg], 
-                        ['*', ['coalesce', ['get', 'risk_undel'], 0], mSept],
-                        // to-number is required here to stop the Urban field from crashing the script
+                        ['*', ['to-number', ['get', 'risk_aggre'], 0], mAgg], 
+                        ['*', ['to-number', ['get', 'risk_undel'], 0], mSept],
                         ['*', ['to-number', ['get', 'risk_delin'], 0], mUrb]
                     ], 
-                    ['coalesce', ['get', 'sens_weigh'], 0]
+                    ['to-number', ['get', 'sens_weigh'], 0]
                 ],
-                ['+', 1, ['*', ['coalesce', ['get', 'pop_gro_51'], 0], mGrowth]]
+                ['+', 1, ['*', ['to-number', ['get', 'pop_gro_51'], 0], mGrowth]]
             ],
             0, '#267300', 30, '#a6d96a', 75, '#ffff00', 150, '#ffcc00', 250, '#ffaa00', 350, '#ff0000'
         ]);
@@ -101,30 +100,26 @@ map.on('load', () => {
         if (e.features.length > 0) {
             const f = e.features[0].properties;
             
-            // Rebuilding the Risk list manually since tileset strings are empty
             let risks = [];
-            if (f.risk_aggre > 0) risks.push('Aggregate Extraction');
-            if (f.risk_undel > 0) risks.push('Rural/Septic Pressure');
+            if (Number(f.risk_aggre) > 0) risks.push('Aggregate Extraction');
+            if (Number(f.risk_undel) > 0) risks.push('Rural/Septic Pressure');
             if (Number(f.risk_delin) > 0) risks.push('Urban Pressure');
             const riskList = risks.length > 0 ? risks.join('<br>• ') : 'General Pressure';
 
-            const hvaSgraValue = (f.HVA_norm || 0) > 0 ? f.HVA_norm : ((f.SGRA_norm || 0) > 0 ? f.SGRA_norm : 0);
+            const hvaSgra = (Number(f.HVA_norm) || 0) > 0 ? f.HVA_norm : ((Number(f.SGRA_norm) || 0) > 0 ? f.SGRA_norm : 0);
 
             const content = `
                 <div style="padding:10px; min-width:200px; font-family:sans-serif;">
                     <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
                     <div style="font-size:11px; margin-top:4px; color:#555;">• ${riskList}</div>
-                    
                     <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
-                    
                     <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
                     <div style="font-size:11px; margin-top:4px; color:#555;">
-                        • HVA/SGRA: ${hvaSgraValue}<br>
+                        • HVA/SGRA: ${hvaSgra}<br>
                         • WHPA: ${Number(f.WHPA_vulner) || '0'}
                     </div>
-                    
                     <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
-                        2051 Growth: +${((f.pop_gro_51 || 0) * 100).toFixed(1)}%
+                        2051 Growth: +${((Number(f.pop_gro_51) || 0) * 100).toFixed(1)}%
                     </div>
                 </div>
             `;
