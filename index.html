@@ -63,8 +63,7 @@ const map = new mapboxgl.Map({
 });
 
 map.on('load', () => {
-    // Fix 1: Set emissive strength ONCE before updateMap runs,
-    // so 3D lighting never darkens the fill colours
+
     map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 1);
 
     // Fix 2: Lock in flat day lighting before first render
@@ -78,8 +77,6 @@ map.on('load', () => {
     const mUrb = document.getElementById('calc-urb').checked ? 1 : 0;
     const mGrowth = document.getElementById('calc-growth').checked ? 1 : 0;
 
-    // Corrected Layer ID: gpi-3-3ev0l1
-    // FORCED MATH: Use this block to stop the "flip"
 map.setPaintProperty('gpi-3-3ev0l1', 'fill-color', [
     'interpolate', ['linear'],
     ['*', 
@@ -87,17 +84,22 @@ map.setPaintProperty('gpi-3-3ev0l1', 'fill-color', [
             ['+', 
                 ['*', ['to-number', ['get', 'risk_aggre'], 0], mAgg], 
                 ['*', ['to-number', ['get', 'risk_undel'], 0], mSept],
-                // Wrap every field in to-number to prevent a 0/Green flip
                 ['*', ['to-number', ['get', 'risk_urb_i'], 0], mUrb]
             ], 
             ['to-number', ['get', 'sens_weigh'], 0]
         ],
         ['+', 1, ['*', ['to-number', ['get', 'pop_gro_51'], 0], mGrowth]]
     ],
-    0, '#267300', 30, '#a6d96a', 75, '#ffff00', 150, '#ffcc00', 250, '#ffaa00', 350, '#ff0000'
+    0, '#267300',   // 0: Deepest Green (Baseline)
+    15, '#6ab023',  // 15: NEW Mid-Green (Nuance anchor)
+    30, '#a6d96a',  // 30: Light Green
+    75, '#ffff00',  // 75: Yellow
+    150, '#ffcc00', // 150: Light Orange
+    250, '#ffaa00', // 250: Deep Orange
+    350, '#ff0000'  // 350: Red
 ]);
 
-    // Fixing overlay toggles
+    // Overlay toggles
     map.setLayoutProperty('aggregate-1ojs0p', 'visibility', document.getElementById('show-agg').checked ? 'visible' : 'none');
     map.setLayoutProperty('delineated-bua-5ddhwr', 'visibility', document.getElementById('show-bua-del').checked ? 'visible' : 'none');
     map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
