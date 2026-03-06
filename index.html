@@ -105,13 +105,12 @@ map.setPaintProperty('gpi-3-3ev0l1', 'fill-color', [
     map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
 }
 
-    map.on('mousemove', 'gpi-3-3ev0l1', (e) => {
+map.on('mousemove', 'gpi-3-3ev0l1', (e) => {
     map.getCanvas().style.cursor = 'pointer';
     if (e.features.length > 0) {
         const f = e.features[0].properties;
         
         let risks = [];
-        // Use Number() to ensure the check works even if data types are mixed
         if (Number(f.risk_aggre) > 0) risks.push('Aggregate Extraction');
         if (Number(f.risk_undel) > 0) risks.push('Rural/Septic Pressure');
         if (Number(f.risk_urb_i) > 0) risks.push('Urban Pressure');
@@ -123,7 +122,7 @@ map.setPaintProperty('gpi-3-3ev0l1', 'fill-color', [
             <div style="padding:10px; min-width:200px; font-family:sans-serif;">
                 <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
                 <div style="font-size:11px; margin-top:4px; color:#555;">• ${riskList}</div>
-                <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+                <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
                 <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
                 <div style="font-size:11px; margin-top:4px; color:#555;">
                     • HVA/SGRA: ${hvaSgra}<br>
