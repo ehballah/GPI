@@ -28,7 +28,7 @@
     label { display: flex; align-items: center; margin: 10px 0; cursor: pointer; font-size: 13px; color: #2c3e50; }
     input[type="checkbox"] { margin-right: 10px; }
     .legend-scale { display: flex; justify-content: space-between; margin-top: 15px; height: 12px;
-                   background: linear-gradient(to right, #267300, #ffff00, #ffaa00, #ff0000); border-radius: 2px; }
+                   background: linear-gradient(to right, #1a9641, #9ed568, #e0f2a2, #fff5b5, #fecf88, #fba55d, #e95f3c, #d7191c); border-radius: 2px; }
 
     /* Waterfall visualization */
     .waterfall { border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px; }
@@ -51,13 +51,12 @@
 <div class="console">
     <div class="console-header">
         <div>
-            <h2>Simcoe County Groundwater Pressure Index (GPI)</h2>
+            <h2>Groundwater Pressure Index</h2>
+            <p class="subtitle">Simcoe County</p>
         </div>
         <button id="collapse-btn" title="Collapse panel">&#9650;</button>
     </div>
     <div id="console-body">
-        <p class="subtitle">This tool highlights where projected population growth and industrial activities intersect with sensitive groundwater recharge areas.</p>
-
         <h3>Risk Weighting</h3>
         <label><input type="checkbox" id="calc-agg" checked> Aggregate Extraction (Weight: 10)</label>
         <label><input type="checkbox" id="calc-sept" checked> Rural/Septic BUA (Weight: 5)</label>
@@ -72,7 +71,7 @@
 
         <div class="legend-scale"></div>
         <p style="font-size: 10px; color: #999; margin-top: 5px;">Low Risk &larr; &rarr; High Risk</p>
-
+    </div>
     <div class="waterfall">
         <h3>Score Breakdown</h3>
         <div id="wf-placeholder" class="wf-placeholder">Hover over a hex to see score breakdown</div>
@@ -98,7 +97,6 @@
         </div>
     </div>
 </div>
-    </div>
 
 <script>
 mapboxgl.accessToken = 'pk.eyJ1IjoiZWhiYWxsYWgiLCJhIjoiY2toYXJhaGZvMTVrZjJwazE4enkzeHEyOCJ9.nhAjZ0tSdwM-rwf57dsgaQ';
@@ -116,14 +114,18 @@ const map = new mapboxgl.Map({
     zoom: 9
 });
 
-// Interpolate the GPI colour in JS to match the map's fill-color stops
+// Interpolate the GPI colour in JS to match the QGIS / Mapbox fill-color ramp
 function gpiColor(val) {
     const stops = [
-        [0, [38,115,0]], [15, [106,176,35]], [30, [166,217,106]],
-        [75, [255,255,0]], [150, [255,204,0]], [250, [255,170,0]], [350, [255,0,0]]
+        [0,   [26,150,65]],  [14,  [59,166,75]],  [31,  [92,182,84]],
+        [56,  [125,197,94]], [79,  [158,213,104]], [94,  [182,224,121]],
+        [112, [203,233,141]],[130, [224,242,162]], [149, [245,251,182]],
+        [169, [255,245,181]],[190, [254,226,158]], [212, [254,207,136]],
+        [239, [253,188,114]],[269, [251,165,93]],  [302, [242,130,77]],
+        [342, [233,95,60]],  [390, [224,60,44]],   [535, [215,25,28]]
     ];
-    if (val <= 0) return 'rgb(38,115,0)';
-    if (val >= 350) return 'rgb(255,0,0)';
+    if (val <= 0) return 'rgb(26,150,65)';
+    if (val >= 535) return 'rgb(215,25,28)';
     for (let i = 1; i < stops.length; i++) {
         if (val <= stops[i][0]) {
             const t = (val - stops[i-1][0]) / (stops[i][0] - stops[i-1][0]);
@@ -133,7 +135,7 @@ function gpiColor(val) {
             return `rgb(${r},${g},${b})`;
         }
     }
-    return 'rgb(255,0,0)';
+    return 'rgb(215,25,28)';
 }
 
 map.on('load', () => {
@@ -144,14 +146,15 @@ map.on('load', () => {
     map.setConfigProperty('basemap', 'showAmbientOcclusion', false);
     map.setConfigProperty('basemap', 'showGroundShadows', false);
 
-    // Hide old layer so it doesn't cover or compete with the new one
-    map.setLayoutProperty('gpi-bw2pfx', 'visibility', 'none');
+    // Hide old tileset layer so it doesn't compete
+    map.setLayoutProperty('gpi-3-3ev0l1', 'visibility', 'none');
 
-    // Set emissive strength + full opacity on the new layer
-    map.setPaintProperty('gpi-3-3ev0l1', 'fill-emissive-strength', 1);
-    map.setPaintProperty('gpi-3-3ev0l1', 'fill-opacity', 1);
+    // Set emissive strength + full opacity on the active layer
+    map.setPaintProperty('gpi-bw2pfx', 'fill-emissive-strength', 1);
+    map.setPaintProperty('gpi-bw2pfx', 'fill-opacity', 1);
 
-    // GPI_Final_ = (risk_ORN + risk_urb_i + risk_aggre + risk_undel) * sens_weigh * (1 + pop_gro_51)
+    // GPI_Final_ = (risk_ORN + risk_delin + risk_aggre + risk_undel) * sens-total * (1 + pop_gro_51)
+    // where sens-total = max(HVA_norm, SGRA_norm) + WHPA_vulner
     function updateMap() {
         const allAgg    = document.getElementById('calc-agg').checked;
         const allSept   = document.getElementById('calc-sept').checked;
@@ -179,24 +182,35 @@ map.on('load', () => {
                         ['*', num('risk_ORN'), mOrn],
                         ['*', num('risk_aggre'), mAgg],
                         ['*', num('risk_undel'), mSept],
-                        ['*', num('risk_urb_i'), mUrb]
+                        ['*', num('risk_delin'), mUrb]
                     ],
-                    num('sens_weigh')
+                    num('sens-total')
                 ],
                 ['+', 1, ['*', num('pop_gro_51'), mGrowth]]
             ];
         }
 
-        map.setPaintProperty('gpi-3-3ev0l1', 'fill-color', [
+        map.setPaintProperty('gpi-bw2pfx', 'fill-color', [
             'interpolate', ['linear'],
             valueExpr,
-            0,   '#267300',
-            15,  '#6ab023',
-            30,  '#a6d96a',
-            75,  '#ffff00',
-            150, '#ffcc00',
-            250, '#ffaa00',
-            350, '#ff0000'
+            0,     '#1a9641',
+            14,    '#3ba64b',
+            31,    '#5cb654',
+            56,    '#7dc55e',
+            79,    '#9ed568',
+            94,    '#b6e079',
+            112,   '#cbe98d',
+            130,   '#e0f2a2',
+            149,   '#f5fbb6',
+            169,   '#fff5b5',
+            190,   '#fee29e',
+            212,   '#fecf88',
+            239,   '#fdbc72',
+            269,   '#fba55d',
+            302,   '#f2824d',
+            342,   '#e95f3c',
+            390,   '#e03c2c',
+            535,   '#d7191c'
         ]);
 
         map.setLayoutProperty('aggregate-1ojs0p',        'visibility', document.getElementById('show-agg').checked      ? 'visible' : 'none');
@@ -204,7 +218,7 @@ map.on('load', () => {
         map.setLayoutProperty('undelineated-bua-8lsqlm', 'visibility', document.getElementById('show-bua-undel').checked ? 'visible' : 'none');
     }
 
-    map.on('mousemove', 'gpi-3-3ev0l1', (e) => {
+    map.on('mousemove', 'gpi-bw2pfx', (e) => {
         map.getCanvas().style.cursor = 'pointer';
         if (e.features.length > 0) {
             const f = e.features[0].properties;
@@ -213,7 +227,7 @@ map.on('load', () => {
             let risks = [];
             if (Number(f.risk_aggre) > 0) risks.push('Aggregate Extraction');
             if (Number(f.risk_undel) > 0) risks.push('Rural/Septic Pressure');
-            if (Number(f.risk_urb_i) > 0) risks.push('Urban Pressure');
+            if (Number(f.risk_delin) > 0) risks.push('Urban Pressure');
             if (Number(f.risk_ORN) > 0)   risks.push('Infrastructure Pressure');
             const riskList = risks.length > 0 ? risks.join('<br>• ') : 'Baseline Pressure';
 
@@ -229,7 +243,7 @@ map.on('load', () => {
                     <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
                     <div style="font-size:11px; margin-top:4px; color:#555;">
                         • HVA/SGRA: ${hvaSgra}<br>
-                        • WHPA: ${Number(f.whpa_i) || 0}
+                        • WHPA: ${Number(f.WHPA_vulner) || 0}
                     </div>
                     <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
                         2051 Growth: +${((Number(f.pop_gro_51) || 0) * 100).toFixed(1)}%
@@ -239,28 +253,36 @@ map.on('load', () => {
             popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
 
             // --- Waterfall ---
-            const rAgg  = Number(f.risk_aggre) || 0;
-            const rSept = Number(f.risk_undel) || 0;
-            const rUrb  = Number(f.risk_urb_i) || 0;
-            const rOrn  = Number(f.risk_ORN)   || 0;
-            const sens  = Number(f.sens_weigh) || 0;
-            const grow  = Number(f.pop_gro_51) || 0;
+            const rAgg  = Number(f.risk_aggre)  || 0;
+            const rSept = Number(f.risk_undel)  || 0;
+            const rUrb  = Number(f.risk_delin)  || 0;
+            const rOrn  = Number(f.risk_ORN)    || 0;
+            const hva   = Number(f.HVA_norm)    || 0;
+            const sgra  = Number(f.SGRA_norm)   || 0;
+            const whpa  = Number(f.WHPA_vulner) || 0;
+            const sens  = Number(f['sens-total']) || 0;
+            const grow  = Number(f.pop_gro_51)  || 0;
 
             const threatSum = rAgg + rSept + rUrb + rOrn;
             const baseGPI   = threatSum * sens;
             const finalGPI  = baseGPI * (1 + grow);
-            const maxGPI    = 370;
 
-            document.getElementById('wf-bar-threats').style.width = (threatSum / maxGPI * 100) + '%';
-            document.getElementById('wf-bar-base').style.width    = (baseGPI / maxGPI * 100) + '%';
+            // Each bar scaled to its own max so all three read clearly
+            const maxThreats = 19;   // 10 + 5 + 2 + 2
+            const maxBase    = 535;  // matches top of QGIS ramp
+            const maxFinal   = 535;
+
+            document.getElementById('wf-bar-threats').style.width = (Math.min(threatSum / maxThreats, 1) * 100) + '%';
+            document.getElementById('wf-bar-base').style.width    = (Math.min(baseGPI / maxBase, 1) * 100) + '%';
             document.getElementById('wf-bar-base').style.background = gpiColor(baseGPI);
-            document.getElementById('wf-bar-final').style.width   = (finalGPI / maxGPI * 100) + '%';
+            document.getElementById('wf-bar-final').style.width   = (Math.min(finalGPI / maxFinal, 1) * 100) + '%';
             document.getElementById('wf-bar-final').style.background = gpiColor(finalGPI);
 
             document.getElementById('wf-val-threats').textContent = threatSum;
             document.getElementById('wf-val-base').textContent    = baseGPI.toFixed(1);
             document.getElementById('wf-val-final').textContent   = finalGPI.toFixed(1);
-            document.getElementById('wf-sens').textContent   = sens.toFixed(1);
+            const sensAquifer = Math.max(hva, sgra);
+            document.getElementById('wf-sens').textContent = `${sens.toFixed(1)} = ${sensAquifer.toFixed(1)} HVA/SGRA + ${whpa.toFixed(1)} WHPA`;
             document.getElementById('wf-growth').textContent = (grow * 100).toFixed(1);
 
             let pills = [];
@@ -276,7 +298,7 @@ map.on('load', () => {
         }
     });
 
-    map.on('mouseleave', 'gpi-3-3ev0l1', () => {
+    map.on('mouseleave', 'gpi-bw2pfx', () => {
         map.getCanvas().style.cursor = '';
         popup.remove();
         document.getElementById('wf-content').style.display = 'none';
