@@ -83,13 +83,13 @@
             </div>
             <div class="wf-mult">&times; Sensitivity (<span id="wf-sens"></span>)</div>
             <div class="wf-step">
-                <div class="wf-label">Base GPI</div>
+                <div class="wf-label">Current GPI</div>
                 <div class="wf-bar-track"><div id="wf-bar-base" class="wf-bar" style="background:#e67e22;"></div></div>
                 <div class="wf-value" id="wf-val-base"></div>
             </div>
             <div class="wf-mult">&times; Growth (+<span id="wf-growth"></span>%)</div>
             <div class="wf-step">
-                <div class="wf-label">2051 GPI</div>
+                <div class="wf-label">2051 Pressure</div>
                 <div class="wf-bar-track"><div id="wf-bar-final" class="wf-bar"></div></div>
                 <div class="wf-value" id="wf-val-final"></div>
             </div>
@@ -251,6 +251,7 @@ map.on('load', () => {
 
             document.getElementById('wf-bar-threats').style.width = (threatSum / maxGPI * 100) + '%';
             document.getElementById('wf-bar-base').style.width    = (baseGPI / maxGPI * 100) + '%';
+            document.getElementById('wf-bar-base').style.background = gpiColor(baseGPI);
             document.getElementById('wf-bar-final').style.width   = (finalGPI / maxGPI * 100) + '%';
             document.getElementById('wf-bar-final').style.background = gpiColor(finalGPI);
 
