@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Simcoe County Groundwater Pressure Index</title>
+<title>Simcoe County Groundwater Pressure Index 2051</title>
 <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.js"></script>
@@ -27,8 +27,21 @@
     h3 { font-size: 13px; margin-top: 20px; color: #34495e; border-bottom: 1px solid #eee; padding-bottom: 5px; }
     label { display: flex; align-items: center; margin: 10px 0; cursor: pointer; font-size: 13px; color: #2c3e50; }
     input[type="checkbox"] { margin-right: 10px; }
-    .legend-scale { display: flex; justify-content: space-between; margin-top: 15px; height: 12px; 
+    .legend-scale { display: flex; justify-content: space-between; margin-top: 15px; height: 12px;
                    background: linear-gradient(to right, #267300, #ffff00, #ffaa00, #ff0000); border-radius: 2px; }
+
+    /* Waterfall visualization */
+    .waterfall { border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px; }
+    .waterfall h3 { margin-top: 5px; }
+    .wf-placeholder { font-size: 11px; color: #999; text-align: center; padding: 15px 0; }
+    .wf-step { display: flex; align-items: center; margin: 5px 0; }
+    .wf-label { font-size: 10px; color: #7f8c8d; width: 58px; text-align: right; padding-right: 8px; flex-shrink: 0; }
+    .wf-bar-track { flex: 1; height: 18px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
+    .wf-bar { height: 100%; border-radius: 3px; transition: width 0.3s ease; min-width: 2px; }
+    .wf-value { font-size: 10px; color: #2c3e50; width: 38px; padding-left: 6px; font-weight: bold; flex-shrink: 0; }
+    .wf-mult { font-size: 10px; color: #999; text-align: center; margin: 1px 0; }
+    .wf-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+    .wf-pill { font-size: 9px; padding: 2px 7px; border-radius: 10px; color: white; font-weight: 500; }
 </style>
 </head>
 <body>
@@ -38,12 +51,12 @@
 <div class="console">
     <div class="console-header">
         <div>
-            <h2>Simcoe Couunty Groundwater Pressure Index (GPI)</h2>
+            <h2>Groundwater Pressure Index</h2>
+            <p class="subtitle">Simcoe County</p>
         </div>
         <button id="collapse-btn" title="Collapse panel">&#9650;</button>
     </div>
     <div id="console-body">
-        <p class="subtitle">This tool visualizes groundwater pressures for Simcoe County. It highlights where projected population growth and industrial activities intersect with sensitive groundwater recharge areas. Toggle different risk factors to see how aggregate mining, urban sprawl, and road networks indicate risks. Hover over areas to see details.</p>
         <h3>Risk Weighting</h3>
         <label><input type="checkbox" id="calc-agg" checked> Aggregate Extraction (Weight: 10)</label>
         <label><input type="checkbox" id="calc-sept" checked> Rural/Septic BUA (Weight: 5)</label>
@@ -58,6 +71,30 @@
 
         <div class="legend-scale"></div>
         <p style="font-size: 10px; color: #999; margin-top: 5px;">Low Risk &larr; &rarr; High Risk</p>
+    </div>
+    <div class="waterfall">
+        <h3>Score Breakdown</h3>
+        <div id="wf-placeholder" class="wf-placeholder">Hover over a hex to see score breakdown</div>
+        <div id="wf-content" style="display:none;">
+            <div class="wf-step">
+                <div class="wf-label">Threats</div>
+                <div class="wf-bar-track"><div id="wf-bar-threats" class="wf-bar" style="background:#c0392b;"></div></div>
+                <div class="wf-value" id="wf-val-threats"></div>
+            </div>
+            <div class="wf-mult">&times; Sensitivity (<span id="wf-sens"></span>)</div>
+            <div class="wf-step">
+                <div class="wf-label">Base GPI</div>
+                <div class="wf-bar-track"><div id="wf-bar-base" class="wf-bar" style="background:#e67e22;"></div></div>
+                <div class="wf-value" id="wf-val-base"></div>
+            </div>
+            <div class="wf-mult">&times; Growth (+<span id="wf-growth"></span>%)</div>
+            <div class="wf-step">
+                <div class="wf-label">2051 GPI</div>
+                <div class="wf-bar-track"><div id="wf-bar-final" class="wf-bar"></div></div>
+                <div class="wf-value" id="wf-val-final"></div>
+            </div>
+            <div id="wf-pills" class="wf-pills"></div>
+        </div>
     </div>
 </div>
 
@@ -77,9 +114,27 @@ const map = new mapboxgl.Map({
     zoom: 9
 });
 
+// Interpolate the GPI colour in JS to match the map's fill-color stops
+function gpiColor(val) {
+    const stops = [
+        [0, [38,115,0]], [15, [106,176,35]], [30, [166,217,106]],
+        [75, [255,255,0]], [150, [255,204,0]], [250, [255,170,0]], [350, [255,0,0]]
+    ];
+    if (val <= 0) return 'rgb(38,115,0)';
+    if (val >= 350) return 'rgb(255,0,0)';
+    for (let i = 1; i < stops.length; i++) {
+        if (val <= stops[i][0]) {
+            const t = (val - stops[i-1][0]) / (stops[i][0] - stops[i-1][0]);
+            const r = Math.round(stops[i-1][1][0] + t * (stops[i][1][0] - stops[i-1][1][0]));
+            const g = Math.round(stops[i-1][1][1] + t * (stops[i][1][1] - stops[i-1][1][1]));
+            const b = Math.round(stops[i-1][1][2] + t * (stops[i][1][2] - stops[i-1][1][2]));
+            return `rgb(${r},${g},${b})`;
+        }
+    }
+    return 'rgb(255,0,0)';
+}
+
 map.on('load', () => {
-    // Helper: robust numeric getter for mixed-type tileset fields.
-    // Wraps coalesce → to-number to handle null, string, and absent values.
     const num = (field) => ['coalesce', ['to-number', ['get', field]], 0];
 
     // Flat day lighting so 3D shadows don't wash out fill colours
@@ -152,6 +207,7 @@ map.on('load', () => {
         if (e.features.length > 0) {
             const f = e.features[0].properties;
 
+            // --- Popup (compact) ---
             let risks = [];
             if (Number(f.risk_aggre) > 0) risks.push('Aggregate Extraction');
             if (Number(f.risk_undel) > 0) risks.push('Rural/Septic Pressure');
@@ -179,12 +235,49 @@ map.on('load', () => {
                 </div>
             `;
             popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+
+            // --- Waterfall ---
+            const rAgg  = Number(f.risk_aggre) || 0;
+            const rSept = Number(f.risk_undel) || 0;
+            const rUrb  = Number(f.risk_urb_i) || 0;
+            const rOrn  = Number(f.risk_ORN)   || 0;
+            const sens  = Number(f.sens_weigh) || 0;
+            const grow  = Number(f.pop_gro_51) || 0;
+
+            const threatSum = rAgg + rSept + rUrb + rOrn;
+            const baseGPI   = threatSum * sens;
+            const finalGPI  = baseGPI * (1 + grow);
+            const maxGPI    = 370;
+
+            document.getElementById('wf-bar-threats').style.width = (threatSum / maxGPI * 100) + '%';
+            document.getElementById('wf-bar-base').style.width    = (baseGPI / maxGPI * 100) + '%';
+            document.getElementById('wf-bar-final').style.width   = (finalGPI / maxGPI * 100) + '%';
+            document.getElementById('wf-bar-final').style.background = gpiColor(finalGPI);
+
+            document.getElementById('wf-val-threats').textContent = threatSum;
+            document.getElementById('wf-val-base').textContent    = baseGPI.toFixed(1);
+            document.getElementById('wf-val-final').textContent   = finalGPI.toFixed(1);
+            document.getElementById('wf-sens').textContent   = sens.toFixed(1);
+            document.getElementById('wf-growth').textContent = (grow * 100).toFixed(1);
+
+            let pills = [];
+            if (rAgg  > 0) pills.push('<span class="wf-pill" style="background:#c0392b;">Aggregate (10)</span>');
+            if (rSept > 0) pills.push('<span class="wf-pill" style="background:#e67e22;">Septic (5)</span>');
+            if (rUrb  > 0) pills.push('<span class="wf-pill" style="background:#8e44ad;">Urban (2)</span>');
+            if (rOrn  > 0) pills.push('<span class="wf-pill" style="background:#2980b9;">ORN (2)</span>');
+            if (pills.length === 0) pills.push('<span class="wf-pill" style="background:#95a5a6;">Baseline</span>');
+            document.getElementById('wf-pills').innerHTML = pills.join('');
+
+            document.getElementById('wf-content').style.display = 'block';
+            document.getElementById('wf-placeholder').style.display = 'none';
         }
     });
 
     map.on('mouseleave', 'gpi-3-3ev0l1', () => {
         map.getCanvas().style.cursor = '';
         popup.remove();
+        document.getElementById('wf-content').style.display = 'none';
+        document.getElementById('wf-placeholder').style.display = 'block';
     });
 
     document.querySelectorAll('input').forEach(i => i.addEventListener('change', updateMap));
