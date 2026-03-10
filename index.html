@@ -184,7 +184,7 @@ map.on('load', () => {
                         ['*', num('risk_undel'), mSept],
                         ['*', num('risk_delin'), mUrb]
                     ],
-                    num('sens-total')
+                    ['+', ['max', num('HVA_norm'), num('SGRA_norm')], num('WHPA_vulner')]
                 ],
                 ['+', 1, ['*', num('pop_gro_51'), mGrowth]]
             ];
@@ -242,9 +242,10 @@ map.on('load', () => {
                     <strong style="font-size:13px; color:#2c3e50;">Primary Risk Factors:</strong>
                     <div style="font-size:11px; margin-top:4px; color:#555;">• ${riskList}</div>
                     <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
-                    <strong style="font-size:13px; color:#2c3e50;">Sensitivity:</strong>
+                    <strong style="font-size:13px; color:#2c3e50;">Vulnerability Drivers:</strong>
                     <div style="font-size:11px; margin-top:4px; color:#555;">
-                        Total: ${sensTotal}
+                        • HVA/SGRA: ${hvaSgra}<br>
+                        • WHPA: ${whpa}
                     </div>
                     <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#2c3e50;">
                         2051 Growth: +${((Number(f.pop_gro_51) || 0) * 100).toFixed(1)}%
@@ -258,7 +259,11 @@ map.on('load', () => {
             const rSept = Number(f.risk_undel)  || 0;
             const rUrb  = Number(f.risk_delin)  || 0;
             const rOrn  = Number(f.risk_ORN)    || 0;
-            const sens  = Number(f['sens-total']) || 0;
+            const wfHva  = Number(f.HVA_norm)    || 0;
+            const wfSgra = Number(f.SGRA_norm)   || 0;
+            const wfWhpa = Number(f.WHPA_vulner) || 0;
+            const sensAquifer = Math.max(wfHva, wfSgra);
+            const sens  = sensAquifer + wfWhpa;
             const grow  = Number(f.pop_gro_51)  || 0;
 
             const threatSum = rAgg + rSept + rUrb + rOrn;
@@ -279,7 +284,7 @@ map.on('load', () => {
             document.getElementById('wf-val-threats').textContent = threatSum;
             document.getElementById('wf-val-base').textContent    = baseGPI.toFixed(1);
             document.getElementById('wf-val-final').textContent   = finalGPI.toFixed(1);
-            document.getElementById('wf-sens').textContent = sens.toFixed(1);
+            document.getElementById('wf-sens').textContent = `${sens.toFixed(1)} = ${sensAquifer.toFixed(1)} HVA/SGRA + ${wfWhpa.toFixed(1)} WHPA`;
             document.getElementById('wf-growth').textContent = (grow * 100).toFixed(1);
 
             let pills = [];
