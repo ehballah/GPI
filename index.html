@@ -39,7 +39,7 @@
     .wf-bar-track { flex: 1; height: 18px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
     .wf-bar { height: 100%; border-radius: 3px; transition: width 0.3s ease; min-width: 2px; }
     .wf-value { font-size: 10px; color: #2c3e50; width: 38px; padding-left: 6px; font-weight: bold; flex-shrink: 0; }
-    .wf-mult { font-size: 10px; color: #999; text-align: center; margin: 1px 0; }
+    .wf-mult { font-size: 10px; color: #999; text-align: left; padding-left: 67px; margin: 2px 0 6px 0; }
     .wf-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
     .wf-pill { font-size: 9px; padding: 2px 7px; border-radius: 10px; color: white; font-weight: 500; }
 </style>
@@ -51,12 +51,12 @@
 <div class="console">
     <div class="console-header">
         <div>
-            <h2>Simcoe County Groundwater Pressure Index (GPI)</h2>
+            <h2>Groundwater Pressure Index</h2>
+            <p class="subtitle">Simcoe County</p>
         </div>
         <button id="collapse-btn" title="Collapse panel">&#9650;</button>
     </div>
     <div id="console-body">
-        <p class="subtitle">This tool visualizes groundwater pressures or threats in Simcoe County. It highlights where projected population growth and industrial activities intersect with sensitive groundwater recharge areas, including Significant Groundwater Recharge Areas (SGRA), Highly Vulnerable Aquifers (HVA), and Wellhead Protection Areas (WHPA).</p>
         <h3>Risk Weighting</h3>
         <label><input type="checkbox" id="calc-agg" checked> Aggregate Extraction (Weight: 10)</label>
         <label><input type="checkbox" id="calc-sept" checked> Rural/Septic BUA (Weight: 5)</label>
@@ -71,7 +71,7 @@
 
         <div class="legend-scale"></div>
         <p style="font-size: 10px; color: #999; margin-top: 5px;">Low Risk &larr; &rarr; High Risk</p>
-
+    </div>
     <div class="waterfall">
         <h3>Score Breakdown</h3>
         <div id="wf-placeholder" class="wf-placeholder">Hover over a hex to see score breakdown</div>
@@ -81,13 +81,13 @@
                 <div class="wf-bar-track"><div id="wf-bar-threats" class="wf-bar" style="background:#c0392b;"></div></div>
                 <div class="wf-value" id="wf-val-threats"></div>
             </div>
-            <div class="wf-mult">&times; Sensitivity (<span id="wf-sens"></span>)</div>
+            <div class="wf-mult">&darr; &times; Sensitivity (<span id="wf-sens"></span>)</div>
             <div class="wf-step">
                 <div class="wf-label">Current GPI</div>
                 <div class="wf-bar-track"><div id="wf-bar-base" class="wf-bar" style="background:#e67e22;"></div></div>
                 <div class="wf-value" id="wf-val-base"></div>
             </div>
-            <div class="wf-mult">&times; Growth (+<span id="wf-growth"></span>%)</div>
+            <div class="wf-mult">&darr; &times; Growth (+<span id="wf-growth"></span>%)</div>
             <div class="wf-step">
                 <div class="wf-label">2051 Pressure</div>
                 <div class="wf-bar-track"><div id="wf-bar-final" class="wf-bar"></div></div>
@@ -96,7 +96,6 @@
             <div id="wf-pills" class="wf-pills"></div>
         </div>
     </div>
-</div>
 </div>
 
 <script>
@@ -185,7 +184,7 @@ map.on('load', () => {
                         ['*', num('risk_undel'), mSept],
                         ['*', num('risk_delin'), mUrb]
                     ],
-                    num('sens-total')
+                    ['+', ['max', num('HVA_norm'), num('SGRA_norm')], num('WHPA_vulner')]
                 ],
                 ['+', 1, ['*', num('pop_gro_51'), mGrowth]]
             ];
@@ -261,7 +260,7 @@ map.on('load', () => {
             const hva   = Number(f.HVA_norm)    || 0;
             const sgra  = Number(f.SGRA_norm)   || 0;
             const whpa  = Number(f.WHPA_vulner) || 0;
-            const sens  = Number(f['sens-total']) || 0;
+            const sens  = Math.max(hva, sgra) + whpa;
             const grow  = Number(f.pop_gro_51)  || 0;
 
             const threatSum = rAgg + rSept + rUrb + rOrn;
