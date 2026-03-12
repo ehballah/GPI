@@ -57,12 +57,12 @@
 <div class="console">
     <div class="console-header">
         <div>
-            <h2>Groundwater Pressure Index</h2>
-            <p class="subtitle">Simcoe County</p>
+            <h2>Simcoe County Groundwater Pressure Index (GPI)</h2>
         </div>
         <button id="collapse-btn" title="Collapse panel">&#9650;</button>
     </div>
     <div id="console-body">
+        <p class="subtitle">An interactive index combining aquifer sensitivity, land use threats, and projected population growth to model groundwater pressure across Simcoe County through 2051.</p>
         <h3>Risk Weighting</h3>
         <label><input type="checkbox" id="calc-agg" checked> Aggregate Extraction (Weight: 10)</label>
         <label><input type="checkbox" id="calc-sept" checked> Rural/Septic BUA (Weight: 5)</label>
@@ -77,8 +77,7 @@
 
         <div class="legend-scale"></div>
         <p style="font-size: 10px; color: #999; margin-top: 5px;">Low Risk &larr; &rarr; High Risk</p>
-    </div>
-    <div class="waterfall">
+        <div class="waterfall">
         <h3>Score Breakdown</h3>
         <div id="wf-placeholder" class="wf-placeholder">Hover over a hex to see score breakdown</div>
         <div id="wf-content" style="display:none;">
@@ -100,6 +99,7 @@
                 <div class="wf-value" id="wf-val-final"></div>
             </div>
             <div id="wf-pills" class="wf-pills"></div>
+        </div>
         </div>
     </div>
 </div>
