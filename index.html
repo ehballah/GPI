@@ -116,8 +116,9 @@ const popup = new mapboxgl.Popup({
 const map = new mapboxgl.Map({
     container: 'map',
     style: 'mapbox://styles/ehballah/cmmdmmbh6001201s3b3wi6oeo',
-    center: [-79.7, 44.5], 
-    zoom: 9
+    center: [-79.7, 44.5],
+    zoom: 9,
+    cooperativeGestures: true
 });
 
 // Interpolate the GPI colour in JS to match the QGIS / Mapbox fill-color ramp
